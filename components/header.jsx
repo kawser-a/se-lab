@@ -4,8 +4,10 @@ import React from 'react'
 import { Button } from './ui/button'
 import { FileText, GraduationCap, LayoutDashboard, PenBox, StarIcon } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu'
+import { checkUser } from '@/lib/checkUser'
 
-const Header = () => {
+const Header = async() => {
+    await checkUser();
     return (
         <header className='fixed top-0 w-full border-b bg-background/80 backdrop-blur-md'>
             <nav className='container mx-auto px-4 h-16 flex items-center justify-between'>
@@ -65,6 +67,7 @@ const Header = () => {
                                 avatarBox: "w-10 h-10"
                             }
                         }}
+                            afterSignOutUrl='/'
                         />
                     </SignedIn>
                 </div>
