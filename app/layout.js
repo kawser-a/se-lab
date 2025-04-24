@@ -4,6 +4,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import Header from "@/components/header";
 import { ClerkProvider } from "@clerk/nextjs";
 import { dark } from "@clerk/themes";
+import { Toaster } from "sonner";
 
 const monaSans = Mona_Sans({
     variable: "--font-mona-sans",
@@ -30,6 +31,7 @@ export default function RootLayout({ children }) {
                                 <Header/>
 
                                 <main className="min-h-screen">{children}</main>
+                                <Toaster richColors/>
 
                                 {/* footer */}
                                 <footer className="bg-muted ">
