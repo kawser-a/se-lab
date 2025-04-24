@@ -1,1 +1,13 @@
-/   
+npx create-next-app@latest
+npx shadcn@latest init
+npx shadcn@latest add button
+npx shadcn@latest add accordion badge alert-dialog dropdown-menu input label progress radio-group select sonner tabs textarea
+npm install next-themes
+npm install @clerk/nextjs
+npm install @clerk/themes
+npm i inngest
+npx inngest-cli@latest dev
+npm i -D prisma
+npx prisma init
+npx prisma migrate dev --name create-models
+npm i react-hook-form zod @hookform/resolvers
