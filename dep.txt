@@ -11,3 +11,7 @@ npm i -D prisma
 npx prisma init
 npx prisma migrate dev --name create-models
 npm i react-hook-form zod @hookform/resolvers
+npm i @google/generative-ai
+npm i react-spinners
+npm i recharts
+npm i date-fns
