@@ -10,6 +10,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
+import QuizResult from './QuizResult';
 
 const Quiz = () => {
 
@@ -75,10 +76,25 @@ const Quiz = () => {
         }
     };
 
+    const startNewQuiz = () => {
+        setCurrentQuestion(0);
+        setAnswers([]);
+        setShowExplanation(false);
+        generateQuizFn();
+        setResultData(null);
+    };
+
     if (generatingQuiz) {
         return <BarLoader className='mt-4' width={"100%"} color='gray' />
     }
 
+    if (resultData) {
+        return (
+            <div className="mx-2">
+                <QuizResult result={resultData} onStartNew={startNewQuiz} />
+            </div>
+        );
+    }
 
     if (!quizData) {
         return (
