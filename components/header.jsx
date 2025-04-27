@@ -11,14 +11,17 @@ const Header = async() => {
     return (
         <header className='fixed top-0 w-full border-b bg-background/80 backdrop-blur-md'>
             <nav className='container mx-auto px-4 h-16 flex items-center justify-between'>
-                <Link href='/' className='w-20 h-20 py-1 '>
+                {/* logo */}
+                <Link href='/' className='flex items-center h-full font-medium text-2xl w-20  py-1 '>
                     <h1>GrowthGrid</h1>
                 </Link>
 
-                <div className='felx items-center space-x-2 md:space-x-4'>
+                <div className='flex items-center  space-x-2 md:space-x-4'>
+
                     <SignedIn>
+                        {/* menu1 */}
                         <Link href={'/dashboard'}>
-                            <Button>
+                            <Button className="h-10 gap-1 px-2 md:px-4">
                                 <LayoutDashboard className='h-4 w-4' />
                                 <span className='hidden md:block'>Industry Insights</span>
                             </Button>
@@ -26,7 +29,8 @@ const Header = async() => {
 
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button>
+                                {/* menu2 */}
+                                <Button className="h-10">
                                     <StarIcon className='h-4 w-4' />
                                     <span className='hidden md:block'>Growth Tools</span>
                                 </Button>
@@ -60,8 +64,9 @@ const Header = async() => {
                         </SignInButton>
                     </SignedOut>
 
-                    <SignedIn>
-                        <UserButton
+                    {/* user profile icon */}
+                    <SignedIn className="mt-10">
+                        <UserButton className="h-10 mt-10"
                         appearance={{
                             elements: {
                                 avatarBox: "w-10 h-10"
