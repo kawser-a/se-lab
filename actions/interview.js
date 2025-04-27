@@ -1,3 +1,4 @@
+"use server"
 
 import { db } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
@@ -146,6 +147,8 @@ export async function getAssesments() {
                 createdAt: "asc",
             },
         });
+
+        return assessments;
     } catch (error) {
         console.error("Error fetching assessments: ", error);
         throw new Error("Failed to fetch assessments.");
