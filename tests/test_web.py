@@ -7,7 +7,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
 
-def run_test():
+def test_run_signin_flow():
     local_test = False 
     if local_test:
         service = Service("D:\\Users\\nafisadman\\Downloads\\chromedriver-win64\\chromedriver-win64\\chromedriver.exe")
