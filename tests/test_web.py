@@ -47,21 +47,21 @@ def test_run_signin_flow():
         """
         # Item 1: Build Resume
         growth_tools_button = wait.until(EC.element_to_be_clickable((By.XPATH, "//button[.//span[text()='Growth Tools']]")))
-        growth_tools_button.click()
+        driver.execute_script("arguments[0].click();", growth_tools_button)
         build_resume = wait.until(EC.element_to_be_clickable((By.XPATH, "//a[.//span[text()='Build Resume']]")))
         build_resume.click()
         time.sleep(10)
         
         # Item 2: Cover Letter
         growth_tools_button = wait.until(EC.element_to_be_clickable((By.XPATH, "//button[.//span[text()='Growth Tools']]")))
-        growth_tools_button.click()
+        driver.execute_script("arguments[0].click();", growth_tools_button)
         cover_letter = wait.until(EC.element_to_be_clickable((By.XPATH, "//a[.//span[text()='Cover Letter']]")))
         cover_letter.click()
         time.sleep(10)
 
         # Item 3: Mock Interview
         growth_tools_button = wait.until(EC.element_to_be_clickable((By.XPATH, "//button[.//span[text()='Growth Tools']]")))
-        growth_tools_button.click()
+        driver.execute_script("arguments[0].click();", growth_tools_button)
         # mock_interview = wait.until(EC.element_to_be_clickable((By.XPATH, "//a[.//span[text()='Mock Interview']]")))
         # mock_interview.click()
 
