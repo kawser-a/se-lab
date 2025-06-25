@@ -14,30 +14,30 @@ const monaSans = Mona_Sans({
 export const metadata = {
     title: "GrowthGrid",
     description: "GrowthGrid - The AI-powered career platform revolutionizing job searches with AR resumes, smart mock interviews, and real-time industry trends. Land your dream role faster.",
+    icons: [
+        { url: "/favicon.svg", type: "image/svg+xml" },
+    ]
 };
 
 export default function RootLayout({ children }) {
     return (
         <ClerkProvider appearance={{baseTheme:dark,}}
         >
-            <html lang="en" suppressHydrationWarning>
+            <html lang="en" className="scroll-smooth" suppressHydrationWarning={true}>
                 <body
+                    suppressHydrationWarning={true}
                     className={`${monaSans.variable} antialiased`}
                 >
-                        <ThemeProvider    attribute="class" defaultTheme="dark"nenableSystem disableTransitionOnChange
+                        <ThemeProvider    attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange
                         >
-
                                 {/* header */}
                                 <Header/>
 
-                                <main className="min-h-screen">{children}</main>
+                                <main className="min-h-screen pt-20">{children}</main>
                                 <Toaster richColors/>
 
-                                {/* footer */}
-                                <footer className="bg-muted ">
-                                    <div className="container mx-auto px-4">
-                                        <p className="text-center py-2">Development running........</p>
-                                    </div>
+                                {/* footer bg-muted */}
+                                <footer className="bg-gradient-to-tr from-[#1E1E1E] to-[#121212]">
                                 </footer>
 
                         </ThemeProvider>
