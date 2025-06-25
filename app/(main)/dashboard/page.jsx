@@ -1,29 +1,25 @@
-
 import { getIndustryInsights } from '@/actions/dashboard';
 import { getUserOnboardingStatus } from '@/actions/user';
 import { redirect } from 'next/navigation';
+import React from 'react'
 import DashboardView from './_components/DashboardView';
 
-export const dynamic = 'force-dynamic';
-
 const IndustryInsightsPage = async () => {
-  // 1. First check onboarding status
-  const { isOnboarded } = await getUserOnboardingStatus();
 
-  // 2. Immediate redirect with return
-  if (!isOnboarded) {
-    redirect("/onboarding");
-    return null; // This line is theoretically unreachable but helps TypeScript
-  }
+    //check if user is already onboard
+        const { isOnboarded } = await getUserOnboardingStatus();
 
-  // 3. Only proceed if onboarded
-  const insights = await getIndustryInsights();
+        const insights = await getIndustryInsights();
 
-  return (
-    <div className='container mx-auto'>
-      <DashboardView insights={insights} />
-    </div>
-  )
+        if (!isOnboarded) {
+            redirect("/onboarding");
+        }
+
+    return (
+        <div className='conatiner mx-auto'>
+            <DashboardView insights={insights} />
+        </div>
+    )
 }
 
-export default IndustryInsightsPage;
+export default IndustryInsightsPage

@@ -1,80 +1,120 @@
 import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton } from '@clerk/nextjs'
 import Link from 'next/link'
-import React from 'react'
 import { Button } from './ui/button'
-import { FileText, GraduationCap, LayoutDashboard, PenBox, StarIcon } from 'lucide-react'
+import { ArrowDown, ChevronDown, FileText, GraduationCap, LayoutDashboard, PenBox, StarIcon } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu'
 import { checkUser } from '@/lib/checkUser'
+import Image from 'next/image'
 
-const Header = async() => {
-    await checkUser();
+const Header = async () => {
+    try {
+        await checkUser();
+    } catch (error) {
+        console.log("Couldn't check user:", error.message);
+    }
+
     return (
-        <header className='fixed top-0 w-full border-b bg-background/80 backdrop-blur-md'>
-            <nav className='container mx-auto px-4 h-16 flex items-center justify-between'>
-                <Link href='/' className='w-20 h-20 py-1 '>
-                    <h1>GrowthGrid</h1>
-                </Link>
+        <div className="w-full">
+            <header className="fixed top-8 left-1/2 -translate-x-1/2 w-[95%] md:w-[95%] xl:w-[90%] max-w-[1900px] bg-transparent backdrop-blur-md border border-gray-300 rounded-2xl shadow-md z-50">
+                <nav className="h-14 flex items-center justify-between px-4 md:px-4">
+                    <Link href="/" className="flex items-center h-full font-bold leading-normal tracking-wide text-2xl">
+                        <div className='flex items-center justify-center gap-1'>
+                            <div>
+                                <div className='h-9 w-10 bg-[#9EFF00] rounded-md relative final-glow'
+                                    animate={{ rotateY: [0, 360], rotateX: [0, 360] }}
+                                    transition={{ repeat: Infinity, duration: 5, ease: "linear" }}
+                                >
+                                    <Image
+                                        src={'/cub.svg'}
+                                        height={25}
+                                        width={25}
+                                        alt='logo'
+                                        className='absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 '
+                                    />
+                                </div>
+                            </div>
+                            <h1>Growth<span className='sec-col'>Grid</span></h1>
+                        </div>
+                    </Link>
 
-                <div className='felx items-center space-x-2 md:space-x-4'>
-                    <SignedIn>
-                        <Link href={'/dashboard'}>
-                            <Button>
-                                <LayoutDashboard className='h-4 w-4' />
-                                <span className='hidden md:block'>Industry Insights</span>
-                            </Button>
-                        </Link>
+                    <div className="flex items-center gap-2 md:gap-4">
+                        <SignedIn>
+                            <Link href="/dashboard">
+                                <div>
+                                    <Button className="h-10 gap-1 text-sm md:text-base font-medium tracking-wide leading-normal py-2 px-4 rounded-md bg-transparent border-2 border-[#C9F300] text-white transition-colors duration-300
+                                    hover:bg-[#C9F300]">
+                                        <span className="hidden md:block text-white hover:!text-black">Industry Insights</span>
+                                    </Button>
 
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button>
-                                    <StarIcon className='h-4 w-4' />
-                                    <span className='hidden md:block'>Growth Tools</span>
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent>
-                                <DropdownMenuItem>
-                                    <Link href={'/resume'} className='flex items-center gap-2'>
-                                        <FileText className='h-4 w-4'/>
-                                        <span className='hidden md:block'>Build Resume</span>
+                                </div>
+                            </Link>
+
+                            <div className="relative group inline-block">
+                                <button
+                                    className="h-10 rounded-md text-black text-sm md:text-base font-medium tracking-wide leading-normal py-2 px-4 bg-gradient-to-r from-[#9EFF00] via-[#C9F300] to-[#9EFF00] bg-[length:200%_200%] animate-glow-sweep
+                                    shadow-[0_0_15px_-3px_#9EFF00] hover:shadow-[0_0_30px_-3px_#C9F300]
+                                    hover:bg-[length:400%_400%] transition-all duration-500 ease-in-out flex items-center gap-2 relative overflow-hidden group"
+                                >
+                                    {/* Glow pulse effect (optional) */}
+                                    <span className="absolute inset-0 bg-[#C9F300] opacity-0 group-hover:opacity-20 group-hover:animate-pulse rounded-md transition-opacity duration-700" />
+
+                                    <span className="hidden md:block relative z-10 drop-shadow-[0_0_8px_#9EFF00] group-hover:drop-shadow-[0_0_12px_#C9F300]">
+                                        Growth Tools
+                                    </span>
+
+                                    <ChevronDown className="h-[1em] w-[1em] text-black font-bold relative z-10 drop-shadow-[0_0_5px_#9EFF00] group-hover:drop-shadow-[0_0_8px_#C9F300]" />
+                                </button>
+
+                                <div
+                                    className="absolute left-0 mt-4 w-56 rounded-xl bg-[#111] text-white font-bold
+                                    shadow-lg shadow-[#9EFF00]/30 opacity-0 scale-95 invisible
+                                    group-hover:opacity-100 group-hover:scale-100 group-hover:visible
+                                    transition-all duration-300 z-50 border border-[#9EFF00]/20"
+                                >
+                                    <Link
+                                        href="/resume"
+                                        className="block px-4 py-2 hover:bg-[#9EFF00] hover:text-black rounded-t-xl transition-all"
+                                    >
+                                        Build Resume
                                     </Link>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem>
-                                    <Link href={'/ai-cover-letter'} className='flex items-center gap-2'>
-                                        <PenBox className='h-4 w-4'/>
-                                        <span className='hidden md:block'>Cover Letter</span>
+                                    <Link
+                                        href="/ai-cover-letter"
+                                        className="block px-4 py-2 hover:bg-[#9EFF00] hover:text-black transition-all"
+                                    >
+                                        Cover Letter
                                     </Link>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem>
-                                    <Link href={'/interview'} className='flex items-center gap-2'>
-                                        <GraduationCap className='h-4 w-4'/>
-                                        <span className='hidden md:block'>Mock Interview</span>
+                                    <Link
+                                        href="/interview"
+                                        className="block px-4 py-2 hover:bg-[#9EFF00] hover:text-black rounded-b-xl transition-all"
+                                    >
+                                        Mock Interview
                                     </Link>
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </SignedIn>
+                                </div>
+                            </div>
 
-                    <SignedOut>
-                        <SignInButton>
-                            <Button>Sign in</Button>
-                        </SignInButton>
-                    </SignedOut>
 
-                    <SignedIn>
-                        <UserButton
-                        appearance={{
-                            elements: {
-                                avatarBox: "w-10 h-10"
-                            }
-                        }}
-                            afterSignOutUrl='/'
-                        />
-                    </SignedIn>
-                </div>
-            </nav>
 
-        </header>
+                        </SignedIn>
+
+                        <SignedOut>
+                            <SignInButton>
+                                <Button>Sign in</Button>
+                            </SignInButton>
+                        </SignedOut>
+
+                        <SignedIn>
+                            <UserButton
+                                className="h-10"
+                                appearance={{
+                                    elements: { avatarBox: "w-10 h-10" },
+                                }}
+                                afterSignOutUrl="/"
+                            />
+                        </SignedIn>
+                    </div>
+                </nav>
+            </header>
+        </div>
     )
 }
-
 export default Header
