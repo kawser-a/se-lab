@@ -1,14 +1,13 @@
 "use client";
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-// import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-
 import { format } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import React, { useState } from 'react'
 import QuizResult from './QuizResult';
 import Link from 'next/link';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import VoiceHistoryPage from '../voice-history/page';
 
 const QuizList = ({ assesments }) => {
 
@@ -29,14 +28,14 @@ const QuizList = ({ assesments }) => {
                             </CardDescription>
                         </div>
                         <div className='flex gap-4 items-center justify-center'>
-                                <Link href="/interview/automatic_interview">
-                                    <Button className="bg-green-600 text-white px-4 py-2 rounded hover:text-black">
-                                        Start Interview
-                                    </Button>
-                                </Link>
-                                <Button onClick={() => router.push("/interview/mock")}>
-                                    Start New Quiz
+                            <Link href="/interview/mock/voice">
+                                <Button className="bg-green-600 text-white px-4 py-2 rounded hover:text-black">
+                                    Start Interview
                                 </Button>
+                            </Link>
+                            <Button onClick={() => router.push("/interview/mock")}>
+                                Start New Quiz
+                            </Button>
                         </div>
                     </div>
                 </CardHeader>
@@ -74,6 +73,34 @@ const QuizList = ({ assesments }) => {
                     </div>
                 </CardContent>
             </Card>
+            <Card>
+                <CardHeader>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <CardTitle className="gradient-title text-3xl md:text-4xl">
+                                Recent Interviews
+                            </CardTitle>
+                            <CardDescription>
+                                Review your past interview performance
+                            </CardDescription>
+                        </div>
+                        <div className="flex gap-4 items-center justify-center">
+                            <Link href="/interview/mock/voice">
+                                <Button className="bg-green-600 text-white px-4 py-2 rounded hover:text-black">
+                                    Start Interview
+                                </Button>
+                            </Link>
+                        </div>
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    <div className="max-h-[500px] overflow-y-auto pr-2 space-y-4">
+                        <VoiceHistoryPage />
+                    </div>
+                </CardContent>
+            </Card>
+
+
 
             <AlertDialog open={!!selectedQuiz} onOpenChange={() => setSelectedQuiz(null)}>
                 <AlertDialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">

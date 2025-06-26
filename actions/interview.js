@@ -1,13 +1,10 @@
 "use server"
-
 import { db } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
 
 export async function generateQuiz() {
     const { userId } = await auth();
@@ -22,7 +19,7 @@ export async function generateQuiz() {
     if (!user) throw new Error("User not found");
 
     const prompt = `
-                Generate 10 technical interview questions for a ${user.industry
+                Generate 2 technical interview questions for a ${user.industry
         } professional${user.skills?.length ? ` with expertise in ${user.skills.join(", ")}` : ""}.
 
                 Each question should be multiple choice with 4 options.
@@ -54,7 +51,6 @@ export async function generateQuiz() {
     }
 
 }
-
 
 export async function saveQuizResult(questions, answers, score) {
     const { userId } = await auth();
@@ -152,4 +148,117 @@ export async function getAssesments() {
         console.error("Error fetching assessments: ", error);
         throw new Error("Failed to fetch assessments.");
     }
+}
+
+export async function generateVoiceInterview(config) {
+    const { userId } = await auth();
+    if (!userId) throw new Error("Unauthorized");
+
+    const user = await db.user.findUnique({
+        where: { clerkUserId: userId },
+    });
+
+    const prompt = `
+  Generate ${config.amount} ${config.type.toLowerCase()} interview questions
+  for a ${config.level} ${config.role} in ${user.industry}.
+  Use this tech stack: ${config.techStack.join(", ")}
+
+  Return JSON only:
+  {
+    "questions": [
+      { "question": "string" }
+    ]
+  }
+  `;
+
+    try {
+        const result = await model.generateContent(prompt);
+        const raw = result.response.text();
+        console.log("Gemini raw output:", raw);
+        const clean = raw.replace(/```(?:json)?/g, "").replace(/```/g, "").trim();
+        const parsed = JSON.parse(clean);
+        return parsed.questions;
+    } catch (error) {
+        console.error("Gemini question generation failed:", error.message);
+        throw new Error("Gemini error: " + error.message);
+    }
+}
+
+export async function saveVoiceInterviewResult(config, responses, feedback, transcript, aiAudioUrls) {
+    const { userId: clerkUserId } = await auth();
+    if (!clerkUserId) throw new Error("Unauthorized");
+
+    const user = await db.user.findUnique({
+        where: { clerkUserId },
+    });
+    if (!user) throw new Error("User not found");
+
+    try {
+        console.log("Saving with:", { config, responses, feedback });
+        const interview = await db.voiceInterview.create({
+            data: {
+                userId: user.id,
+                role: config.role,
+                level: config.level,
+                techStack: config.techStack,
+                type: config.type,
+                score: feedback.overallScore,
+                strengths: feedback.strengths || "N/A",
+                areasForImprovement: feedback.areasForImprovement || "N/A",
+                feedbackJson: feedback.breakdown,
+                transcriptJson: transcript || [],
+                aiAudioUrls: aiAudioUrls || [],
+            },
+        });
+        return interview;
+    } catch (error) {
+        console.error("Save voice interview error:", error);
+        throw new Error("Failed to save voice interview");
+    }
+}
+
+export async function generateVoiceFeedback(config, responses) {
+    const prompt = `
+  User just completed a ${config.level} ${config.role} ${config.type} voice interview.
+
+  Here are the Q&A:
+  ${responses.map(r => `Q: ${r.question}\nA: ${r.answer}`).join("\n\n")}
+
+  Provide JSON ONLY:
+  {
+    "overallScore": float (0-100),
+    "strengths": "string",
+    "areasForImprovement": "string",
+    "breakdown": {
+      "communication": float (0-100),
+      "technicalKnowledge": float (0-100),
+      "problemSolving": float (0-100),
+      "confidence": float (0-100)
+    }
+  }
+  `;
+
+    try {
+        const result = await model.generateContent(prompt);
+        const text = result.response.text().replace(/```(?:json)?\n?/g, "").trim();
+        return JSON.parse(text);
+    } catch (err) {
+        console.error("Feedback gen error:", err);
+        throw new Error("Failed to generate feedback");
+    }
+}
+
+export async function getVoiceInterviews() {
+    const { userId: clerkUserId } = await auth();
+    if (!clerkUserId) throw new Error("Unauthorized");
+
+    const user = await db.user.findUnique({
+        where: { clerkUserId },
+    });
+    if (!user) throw new Error("User not found");
+
+    return await db.voiceInterview.findMany({
+        where: { userId: user.id },
+        orderBy: { createdAt: "desc" },
+    });
 }

@@ -1,4 +1,4 @@
-import { getAssesments } from "@/actions/interview";
+import { getAssesments, getVoiceInterviews } from "@/actions/interview";
 import PerformanceChart from "./_components/PerformanceChart";
 import QuizList from "./_components/QuizList";
 import StatsCards from "./_components/StatsCards";
