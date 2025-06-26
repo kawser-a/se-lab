@@ -7,13 +7,15 @@ import DashboardView from './_components/DashboardView';
 const IndustryInsightsPage = async () => {
 
     //check if user is already onboard
-        const { isOnboarded } = await getUserOnboardingStatus();
+    const { isOnboarded } = await getUserOnboardingStatus();
 
-        const insights = await getIndustryInsights();
+    if (!isOnboarded) {
+        redirect("/onboarding");
+        return null;
+    }
 
-        if (!isOnboarded) {
-            redirect("/onboarding");
-        }
+    const insights = await getIndustryInsights();
+
 
     return (
         <div className='conatiner mx-auto'>
