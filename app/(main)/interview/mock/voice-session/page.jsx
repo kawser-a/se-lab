@@ -23,7 +23,7 @@ export default function VoiceSessionPage() {
     const questionIndexRef = useRef(0);
     const transcriptRef = useRef([]);
 
-    const ELEVEN_API_KEY = "sk_0dceffe7a73fa0bbef4e66abd7a6f656ac79cf3d0deefcc8";
+    const ELEVEN_API_KEY = "sk_0ebfe7d99f47c559cacafbf2133ca3ee8c16161549ae565e";
     const VOICE_ID = "Hh0rE70WfnSFN80K8uJC"; // Rachel (friendly voice)
 
     const config = {

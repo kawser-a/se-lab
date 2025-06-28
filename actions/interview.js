@@ -4,7 +4,7 @@ import { auth } from "@clerk/nextjs/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
 export async function generateQuiz() {
     const { userId } = await auth();
@@ -123,6 +123,11 @@ export async function saveQuizResult(questions, answers, score) {
     }
 }
 
+/*
+1. Authenticate a user.
+2. Find that user in the database.
+3. Fetch all the assessments for that user, ordered by creation date (oldest first).
+ */
 export async function getAssesments() {
     const { userId } = await auth();
     if (!userId) throw new Error("Unauthorized");
@@ -150,6 +155,16 @@ export async function getAssesments() {
     }
 }
 
+/**
+ * Generates a list of AI-powered interview questions for a voice interview.
+ *
+ * This function:
+ * - Authenticates the current user.
+ * - Fetches the user's industry from the database.
+ * - Builds a custom prompt based on the given config.
+ * - Calls an AI model to generate the questions.
+ * - Parses and returns the generated questions as an array.
+ */
 export async function generateVoiceInterview(config) {
     const { userId } = await auth();
     if (!userId) throw new Error("Unauthorized");
@@ -162,8 +177,10 @@ export async function generateVoiceInterview(config) {
   Generate ${config.amount} ${config.type.toLowerCase()} interview questions
   for a ${config.level} ${config.role} in ${user.industry}.
   Use this tech stack: ${config.techStack.join(", ")}
-
-  Return JSON only:
+  Instructions:
+  1. The question must be a single, clear question. Maximum 20 words / question.
+  2. Start the questions with a short human-like remark
+  3. Return JSON only:
   {
     "questions": [
       { "question": "string" }
@@ -183,6 +200,32 @@ export async function generateVoiceInterview(config) {
         throw new Error("Gemini error: " + error.message);
     }
 }
+
+/**
+ * Saves the results of a voice interview to the database.
+ *
+ * Authenticates the user, finds their record, and creates a new voiceInterview entry with
+ * details including interview config, user responses, AI-generated feedback, transcript,
+ * and AI-generated audio URLs.
+ *
+ * @async
+ * @function saveVoiceInterviewResult
+ * @param {Object} config - Configuration of the interview.
+ * @param {string} config.role - Role title (e.g., "Frontend Developer").
+ * @param {string} config.level - Job level (e.g., "Senior").
+ * @param {string[]} config.techStack - List of technologies used.
+ * @param {string} config.type - Interview type (e.g., "Technical").
+ * @param {Array<{ question: string, answer: string }>} responses - User’s Q&A responses.
+ * @param {Object} feedback - AI-generated feedback object.
+ * @param {number} feedback.overallScore - Overall interview score (0-100).
+ * @param {string} feedback.strengths - Strengths identified.
+ * @param {string} feedback.areasForImprovement - Areas to improve.
+ * @param {Object} feedback.breakdown - Detailed scoring breakdown.
+ * @param {Array} transcript - Transcript of the voice interview (optional).
+ * @param {Array<string>} aiAudioUrls - URLs to AI-generated audio files (optional).
+ * @returns {Promise<Object>} The newly saved voice interview database record.
+ * @throws {Error} Throws if unauthorized, user not found, or database save fails.
+ */
 
 export async function saveVoiceInterviewResult(config, responses, feedback, transcript, aiAudioUrls) {
     const { userId: clerkUserId } = await auth();
@@ -217,6 +260,22 @@ export async function saveVoiceInterviewResult(config, responses, feedback, tran
     }
 }
 
+/**
+ * Generates detailed AI feedback for a completed voice interview.
+ *
+ * Constructs a prompt including the interview context and Q&A responses,
+ * then requests the AI model to provide a JSON summary with scores and feedback.
+ *
+ * @async
+ * @function generateVoiceFeedback
+ * @param {Object} config - Interview configuration.
+ * @param {string} config.level - Job level (e.g., "Junior", "Senior").
+ * @param {string} config.role - Role title (e.g., "Backend Developer").
+ * @param {string} config.type - Interview type (e.g., "Technical").
+ * @param {Array<{ question: string, answer: string }>} responses - Array of Q&A objects.
+ * @returns {Promise<Object>} Parsed feedback JSON containing overall score, strengths, areas for improvement, and breakdown.
+ * @throws {Error} Throws if feedback generation or JSON parsing fails.
+ */
 export async function generateVoiceFeedback(config, responses) {
     const prompt = `
   User just completed a ${config.level} ${config.role} ${config.type} voice interview.
@@ -248,6 +307,20 @@ export async function generateVoiceFeedback(config, responses) {
     }
 }
 
+/**
+ * Retrieves all voice interviews for the authenticated user.
+ *
+ * This function:
+ * - Authenticates the user.
+ * - Finds the user in the database by their Clerk user ID.
+ * - Retrieves all voice interview records linked to the user.
+ * - Returns the interviews sorted by creation date in descending order (most recent first).
+ *
+ * @async
+ * @function getVoiceInterviews
+ * @returns {Promise<Array>} Array of voice interview objects belonging to the user.
+ * @throws {Error} Throws if the user is unauthorized or not found.
+ */
 export async function getVoiceInterviews() {
     const { userId: clerkUserId } = await auth();
     if (!clerkUserId) throw new Error("Unauthorized");
