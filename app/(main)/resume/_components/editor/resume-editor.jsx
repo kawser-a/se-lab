@@ -113,7 +113,9 @@ const ResumeEditor = ({ resume }) => {
     const draftSummary = async (brief) => {
         // The summary is written from the saved CV, so save first.
         if (!(await save())) throw new Error("Fix the highlighted problem before drafting a summary");
-        return suggestSummary(resume.id, brief);
+        const result = await suggestSummary(resume.id, brief);
+        if (result.error) throw new Error(result.error);
+        return result.text;
     };
 
     const download = async (plain = false) => {

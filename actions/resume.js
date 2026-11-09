@@ -3,7 +3,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/prisma";
-import { generateText } from "@/lib/gemini";
+import { AIUnavailableError, generateText } from "@/lib/gemini";
 import { resumeDataSchema, resumeThemeSchema, resumeTitleSchema } from "@/lib/resume/schema";
 import { emptyResumeData, SECTION_META } from "@/lib/resume/sections";
 import { SUMMARY_LEVELS, summaryBriefSchema } from "@/lib/resume/summary";
@@ -140,6 +140,18 @@ export async function deleteResume(id) {
     revalidatePath("/resume");
 }
 
+// AI helpers return { text } or { error } rather than throwing, because
+// Next.js hides thrown error messages from the browser in production.
+async function aiResult(write) {
+    try {
+        return { text: await write() };
+    } catch (error) {
+        if (error instanceof AIUnavailableError) return { error: error.message };
+        console.error("AI suggestion failed:", error);
+        return { error: "Couldn't write a suggestion this time. Please try again." };
+    }
+}
+
 const TONES = {
     developer: "clear and technical, naming tools and outcomes",
     academic: "formal and precise, as used in academic CVs",
@@ -151,7 +163,7 @@ export async function suggestBullet({ text, templateId }) {
     await getCurrentUser();
 
     const bullet = String(text ?? "").trim().slice(0, 400);
-    if (!bullet) throw new Error("Write the bullet point first");
+    if (!bullet) return { error: "Write the bullet point first" };
 
     const prompt = `
         Rewrite this CV bullet point. Tone: ${TONES[templateId] ?? TONES.developer}.
@@ -167,8 +179,10 @@ export async function suggestBullet({ text, templateId }) {
         Reply with the rewritten bullet only.
     `;
 
-    const suggestion = await generateText(prompt);
-    return suggestion.replace(/^[-•*\s"]+|["\s]+$/g, "").replace(/\.$/, "");
+    return aiResult(async () => {
+        const suggestion = await generateText(prompt);
+        return suggestion.replace(/^[-•*\s"]+|["\s]+$/g, "").replace(/\.$/, "");
+    });
 }
 
 export async function suggestSummary(id, brief = {}) {
@@ -176,10 +190,10 @@ export async function suggestSummary(id, brief = {}) {
     const resume = await getOwnResume(user.id, id);
 
     const parsed = resumeDataSchema.safeParse(resume.data);
-    if (!parsed.success) throw new Error("Save your CV first");
+    if (!parsed.success) return { error: "Save your CV first" };
 
     const answers = summaryBriefSchema.safeParse(brief);
-    if (!answers.success) throw new Error(firstError(answers));
+    if (!answers.success) return { error: firstError(answers) };
     const { role, level, keywords, about } = answers.data;
 
     const { basics, sections } = parsed.data;
@@ -189,7 +203,7 @@ export async function suggestSummary(id, brief = {}) {
         .join("\n");
 
     if (!facts.trim() && !role && !about && keywords.length === 0) {
-        throw new Error("Add the role, a few keywords or a line about the job first");
+        return { error: "Add the role, a few keywords or a line about the job first" };
     }
 
     const templateId = resume.theme?.templateId;
@@ -215,5 +229,5 @@ export async function suggestSummary(id, brief = {}) {
         Reply with the summary only.
     `;
 
-    return generateText(prompt);
+    return aiResult(() => generateText(prompt));
 }

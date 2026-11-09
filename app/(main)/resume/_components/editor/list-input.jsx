@@ -24,10 +24,11 @@ const ListInput = ({ label, values, onChange, templateId, allowAi = true, max = 
 
         setSuggesting({ index, loading: true, text: "" });
         try {
-            const suggestion = await suggestBullet({ text, templateId });
-            setSuggesting({ index, loading: false, text: suggestion });
+            const result = await suggestBullet({ text, templateId });
+            if (result.error) throw new Error(result.error);
+            setSuggesting({ index, loading: false, text: result.text });
         } catch (error) {
-            toast.error(error.message);
+            toast.error(error.message || "Couldn't write a suggestion. Please try again.");
             setSuggesting(null);
         }
     };

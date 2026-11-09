@@ -24,6 +24,8 @@ CLERK_SECRET_KEY=""
 GEMINI_API_KEY=""
 # Optional. Defaults to gemini-3.8-flash.
 GEMINI_MODEL=""
+# Optional. Comma-separated models to try when the main one is busy.
+GEMINI_FALLBACK_MODELS="gemini-3.5-flash-lite"
 ```
 
 Then apply the database migrations:
