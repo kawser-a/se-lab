@@ -15,7 +15,35 @@ npm install
 npx prisma generate
 ```
 
-3. Set up Clerk API 
+3. Create a `.env` file with your keys:
+
+```
+DATABASE_URL="postgresql://USER:PASSWORD@localhost:5432/growthgrid"
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=""
+CLERK_SECRET_KEY=""
+GEMINI_API_KEY=""
+# Optional. Defaults to gemini-3.8-flash.
+GEMINI_MODEL=""
+# Optional. Comma-separated models to try when the main one is busy.
+GEMINI_FALLBACK_MODELS="gemini-3.5-flash-lite"
+# Optional but recommended. Free key from https://console.groq.com/keys
+GROQ_API_KEY=""
+# Optional. Comma-separated, tried in order.
+GROQ_MODELS="openai/gpt-oss-120b,openai/gpt-oss-20b"
+# Optional. Force one order for every request, e.g. "groq,gemini".
+AI_PROVIDER_ORDER=""
+```
+
+At least one of `GEMINI_API_KEY` or `GROQ_API_KEY` is needed. With both set, short
+CV suggestions go to Groq first because it replies in about a second, and longer
+jobs like industry insights and quizzes go to Gemini first. Either one takes over
+when the other is busy or rate limited.
+
+Then apply the database migrations:
+
+```bash
+npx prisma migrate deploy
+```
 
 4. Then run the development server:
 
@@ -31,6 +59,14 @@ bun dev
 
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+## Tests
+
+```bash
+npm test
+```
+
+The tests render every CV template from a sample CV and check that the PDF text can be extracted.
 
 You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
 
