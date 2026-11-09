@@ -15,7 +15,22 @@ npm install
 npx prisma generate
 ```
 
-3. Set up Clerk API 
+3. Create a `.env` file with your keys:
+
+```
+DATABASE_URL="postgresql://USER:PASSWORD@localhost:5432/growthgrid"
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=""
+CLERK_SECRET_KEY=""
+GEMINI_API_KEY=""
+# Optional. Defaults to gemini-3.8-flash.
+GEMINI_MODEL=""
+```
+
+Then apply the database migrations:
+
+```bash
+npx prisma migrate deploy
+```
 
 4. Then run the development server:
 
@@ -31,6 +46,14 @@ bun dev
 
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+## Tests
+
+```bash
+npm test
+```
+
+The tests render every CV template from a sample CV and check that the PDF text can be extracted.
 
 You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
 
