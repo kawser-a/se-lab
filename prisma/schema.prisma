@@ -148,7 +148,7 @@ model User {
     // Relations
     skills         String[] // Array of skills
     assessments    Assessment[]
-    resume         Resume?
+    resumes        Resume[]
     coverLetter    CoverLetter[]
     VoiceInterview VoiceInterview[]
 }
@@ -169,13 +169,17 @@ model Assessment {
 
 model Resume {
     id        String   @id @default(cuid())
-    userId    String   @unique // One resume per user
-    user      User     @relation(fields: [userId], references: [id])
-    content   String   @db.Text // Markdown content
+    userId    String
+    user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+    title     String   @default("My CV")
+    data      Json // CV content, validated by lib/resume/schema.js
+    theme     Json // Template and style settings
     atsScore  Float?
     feedback  String?
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
+
+    @@index([userId])
 }
 
 model CoverLetter {
