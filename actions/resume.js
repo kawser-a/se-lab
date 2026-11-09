@@ -6,6 +6,7 @@ import { db } from "@/lib/prisma";
 import { generateText } from "@/lib/gemini";
 import { resumeDataSchema, resumeThemeSchema, resumeTitleSchema } from "@/lib/resume/schema";
 import { emptyResumeData, SECTION_META } from "@/lib/resume/sections";
+import { SUMMARY_LEVELS, summaryBriefSchema } from "@/lib/resume/summary";
 import { TEMPLATES, defaultTheme } from "@/lib/resume/templates";
 
 async function getCurrentUser() {
@@ -170,12 +171,16 @@ export async function suggestBullet({ text, templateId }) {
     return suggestion.replace(/^[-•*\s"]+|["\s]+$/g, "").replace(/\.$/, "");
 }
 
-export async function suggestSummary(id) {
+export async function suggestSummary(id, brief = {}) {
     const user = await getCurrentUser();
     const resume = await getOwnResume(user.id, id);
 
     const parsed = resumeDataSchema.safeParse(resume.data);
     if (!parsed.success) throw new Error("Save your CV first");
+
+    const answers = summaryBriefSchema.safeParse(brief);
+    if (!answers.success) throw new Error(firstError(answers));
+    const { role, level, keywords, about } = answers.data;
 
     const { basics, sections } = parsed.data;
     const facts = sections
@@ -183,18 +188,31 @@ export async function suggestSummary(id) {
         .map((section) => `${section.title}: ${JSON.stringify(section.items.filter((item) => item.visible))}`)
         .join("\n");
 
-    if (!facts.trim()) throw new Error("Add some experience, projects or education first");
+    if (!facts.trim() && !role && !about && keywords.length === 0) {
+        throw new Error("Add the role, a few keywords or a line about the job first");
+    }
 
     const templateId = resume.theme?.templateId;
     const prompt = `
         Write a 2 to 3 sentence professional summary for the top of a CV.
         Tone: ${TONES[templateId] ?? TONES.developer}.
-        ${basics.headline ? `Their headline: ${basics.headline}` : ""}
 
-        Use only facts that appear below. Do not invent numbers, years of experience, employers or skills.
-        Write in the first person without using "I". No quotation marks.
+        What the person told us:
+        - Role they are applying for: ${role || basics.headline || "not given"}
+        - Career stage: ${SUMMARY_LEVELS[level] ?? "not given"}
+        - Skills or keywords to mention where they fit: ${keywords.join(", ") || "none given"}
+        - About the job: ${about || "not given"}
 
-        ${facts.slice(0, 6000)}
+        Their CV:
+        ${facts.slice(0, 6000) || "Nothing filled in yet."}
+
+        Rules:
+        - Use only facts from the answers and the CV. Do not invent numbers, years of experience, employers or skills.
+        - Aim the summary at the role and the job described.
+        - Write in the first person without using "I". No quotation marks, no headings.
+        - At most 60 words.
+
+        Reply with the summary only.
     `;
 
     return generateText(prompt);

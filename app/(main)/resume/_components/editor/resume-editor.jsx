@@ -110,10 +110,10 @@ const ResumeEditor = ({ resume }) => {
         setOpenSection(section.id);
     };
 
-    const draftSummary = async () => {
+    const draftSummary = async (brief) => {
         // The summary is written from the saved CV, so save first.
         if (!(await save())) throw new Error("Fix the highlighted problem before drafting a summary");
-        return suggestSummary(resume.id);
+        return suggestSummary(resume.id, brief);
     };
 
     const download = async (plain = false) => {
@@ -223,6 +223,7 @@ const ResumeEditor = ({ resume }) => {
                                     onMove={(offset) => moveSection(index, offset)}
                                     onRemove={() => removeSection(section.id)}
                                     templateId={theme.templateId}
+                                    headline={data.basics.headline}
                                     onSuggestSummary={draftSummary}
                                 />
                             ))}

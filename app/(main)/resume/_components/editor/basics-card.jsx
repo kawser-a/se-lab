@@ -1,11 +1,12 @@
 "use client";
 
-import { ChevronDown, ChevronUp, Plus, X } from "lucide-react";
+import { ChevronDown, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { newId } from "@/lib/resume/sections";
+import Collapse from "./collapse";
 
 const FIELDS = [
     { name: "name", label: "Full name", autoComplete: "name" },
@@ -20,19 +21,19 @@ const BasicsCard = ({ basics, open, onToggle, onChange }) => {
     const setLinks = (links) => onChange({ ...basics, links });
 
     return (
-        <div className={cn("rounded-xl border bg-card", open && "border-neutral-600")}>
+        <div className={cn("rounded-xl border bg-card transition-colors duration-300", open && "border-neutral-600")}>
             <button
                 type="button"
                 onClick={onToggle}
                 aria-expanded={open}
                 className="flex min-h-12 w-full items-center gap-2 px-3 text-left"
             >
-                {open ? <ChevronUp className="size-4 text-muted-foreground" /> : <ChevronDown className="size-4 text-muted-foreground" />}
+                <ChevronDown className={cn("size-4 text-muted-foreground transition-transform duration-300", open && "rotate-180")} />
                 <span className="flex-1 font-semibold">Basics</span>
                 <span className="text-sm text-muted-foreground">Name, contact, links</span>
             </button>
 
-            {open && (
+            <Collapse open={open}>
                 <div className="space-y-4 border-t px-3 pb-3 pt-4">
                     <div className="grid gap-3 sm:grid-cols-2">
                         {FIELDS.map((field) => (
@@ -98,7 +99,7 @@ const BasicsCard = ({ basics, open, onToggle, onChange }) => {
                         )}
                     </div>
                 </div>
-            )}
+            </Collapse>
         </div>
     );
 };

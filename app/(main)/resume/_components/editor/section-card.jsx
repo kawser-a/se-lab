@@ -1,17 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronUp, Copy, Eye, EyeOff, Loader2, Plus, Sparkles, Trash2 } from "lucide-react";
-import { toast } from "sonner";
+import { ChevronDown, ChevronUp, Copy, Eye, EyeOff, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { SECTION_META, emptyItem, newId } from "@/lib/resume/sections";
 import { TEMPLATES, isSectionShown } from "@/lib/resume/templates";
-import AiSuggestion from "./ai-suggestion";
+import Collapse from "./collapse";
 import ItemFields, { itemSummary } from "./item-fields";
+import SummaryEditor from "./summary-editor";
 
 function move(list, index, offset) {
     const target = index + offset;
@@ -29,10 +28,9 @@ function IconButton({ label, children, ...props }) {
     );
 }
 
-const SectionCard = ({ section, index, count, open, onToggle, onChange, onMove, onRemove, templateId, onSuggestSummary }) => {
+const SectionCard = ({ section, index, count, open, onToggle, onChange, onMove, onRemove, templateId, headline, onSuggestSummary }) => {
     const [openItem, setOpenItem] = useState(section.items?.[0]?.id ?? null);
     const [confirmRemove, setConfirmRemove] = useState(false);
-    const [summarySuggestion, setSummarySuggestion] = useState(null);
 
     const meta = SECTION_META[section.type];
     const shown = isSectionShown(templateId, section.type);
@@ -45,17 +43,6 @@ const SectionCard = ({ section, index, count, open, onToggle, onChange, onMove, 
         setOpenItem(item.id);
     };
 
-    const draftSummary = async () => {
-        setSummarySuggestion({ loading: true, text: "" });
-        try {
-            const text = await onSuggestSummary();
-            setSummarySuggestion({ loading: false, text });
-        } catch (error) {
-            toast.error(error.message);
-            setSummarySuggestion(null);
-        }
-    };
-
     const remove = () => {
         if (!confirmRemove) {
             setConfirmRemove(true);
@@ -66,7 +53,7 @@ const SectionCard = ({ section, index, count, open, onToggle, onChange, onMove, 
     };
 
     return (
-        <div className={cn("rounded-xl border bg-card", open && "border-neutral-600")}>
+        <div className={cn("rounded-xl border bg-card transition-colors duration-300", open && "border-neutral-600")}>
             <div className="flex min-h-12 items-center gap-1 pl-3 pr-1">
                 <button
                     type="button"
@@ -74,7 +61,7 @@ const SectionCard = ({ section, index, count, open, onToggle, onChange, onMove, 
                     aria-expanded={open}
                     className="flex min-h-12 flex-1 items-center gap-2 text-left"
                 >
-                    {open ? <ChevronUp className="size-4 text-muted-foreground" /> : <ChevronDown className="size-4 text-muted-foreground" />}
+                    <ChevronDown className={cn("size-4 text-muted-foreground transition-transform duration-300", open && "rotate-180")} />
                     <span className={cn("font-semibold", !section.visible && "text-muted-foreground line-through")}>
                         {section.title}
                     </span>
@@ -99,7 +86,7 @@ const SectionCard = ({ section, index, count, open, onToggle, onChange, onMove, 
                 </IconButton>
             </div>
 
-            {open && (
+            <Collapse open={open}>
                 <div className="space-y-4 border-t px-3 pb-3 pt-4">
                     <div className="space-y-1.5">
                         <Label htmlFor={`title-${section.id}`}>Section name</Label>
@@ -112,35 +99,7 @@ const SectionCard = ({ section, index, count, open, onToggle, onChange, onMove, 
                     </div>
 
                     {section.type === "summary" ? (
-                        <div className="space-y-2">
-                            <div className="flex items-end justify-between gap-2">
-                                <Label htmlFor={`summary-${section.id}`}>Text</Label>
-                                <Button type="button" variant="outline" size="sm" onClick={draftSummary} disabled={summarySuggestion?.loading}>
-                                    {summarySuggestion?.loading ? <Loader2 className="animate-spin" /> : <Sparkles className="text-[#C9F300]" />}
-                                    Draft from my CV
-                                </Button>
-                            </div>
-                            <Textarea
-                                id={`summary-${section.id}`}
-                                value={section.content}
-                                rows={4}
-                                maxLength={2000}
-                                placeholder="Two or three lines on who you are and what you're looking for"
-                                onChange={(event) => onChange({ ...section, content: event.target.value })}
-                            />
-                            {summarySuggestion && (
-                                <AiSuggestion
-                                    suggestion={summarySuggestion.text}
-                                    loading={summarySuggestion.loading}
-                                    onAccept={() => {
-                                        onChange({ ...section, content: summarySuggestion.text });
-                                        setSummarySuggestion(null);
-                                    }}
-                                    onRetry={draftSummary}
-                                    onDismiss={() => setSummarySuggestion(null)}
-                                />
-                            )}
-                        </div>
+                        <SummaryEditor section={section} headline={headline} onChange={onChange} onSuggest={onSuggestSummary} />
                     ) : (
                         <div className="space-y-2">
                             {section.items.map((item, itemIndex) => {
@@ -187,7 +146,7 @@ const SectionCard = ({ section, index, count, open, onToggle, onChange, onMove, 
                                                 <ChevronDown />
                                             </IconButton>
                                         </div>
-                                        {expanded && (
+                                        <Collapse open={expanded}>
                                             <div className="space-y-3 border-t p-3">
                                                 <ItemFields
                                                     type={section.type}
@@ -223,7 +182,7 @@ const SectionCard = ({ section, index, count, open, onToggle, onChange, onMove, 
                                                     </Button>
                                                 </div>
                                             </div>
-                                        )}
+                                        </Collapse>
                                     </div>
                                 );
                             })}
@@ -239,7 +198,7 @@ const SectionCard = ({ section, index, count, open, onToggle, onChange, onMove, 
                         </Button>
                     </div>
                 </div>
-            )}
+            </Collapse>
         </div>
     );
 };
