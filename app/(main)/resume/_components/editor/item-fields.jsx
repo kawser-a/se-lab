@@ -1,11 +1,13 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { GROUP_NAME_SUGGESTIONS } from "@/lib/resume/skill-suggestions";
 import ListInput from "./list-input";
+import SkillPicker from "./skill-picker";
 
 // What each section type asks for. `wide` fields span both columns.
 const FIELDS = {
@@ -32,14 +34,14 @@ const FIELDS = {
         { name: "name", label: "Project name" },
         { name: "role", label: "Your role", placeholder: "Team project, Solo project…" },
         { name: "link", label: "Link", placeholder: "github.com/you/project" },
-        { name: "tech", label: "Built with", kind: "tags", placeholder: "Next.js, PostgreSQL" },
+        { name: "tech", label: "Built with", kind: "tags", context: "frameworks tools databases", placeholder: "Next.js, PostgreSQL" },
         { name: "start", label: "Start", kind: "month" },
         { name: "end", label: "End", kind: "month" },
         { name: "bullets", label: "Bullet points", kind: "list", ai: true },
     ],
     skills: [
-        { name: "group", label: "Group", placeholder: "Languages" },
-        { name: "keywords", label: "Skills", kind: "tags", placeholder: "Python, TypeScript, SQL" },
+        { name: "group", label: "Group", placeholder: "Languages", options: GROUP_NAME_SUGGESTIONS },
+        { name: "keywords", label: "Skills", kind: "tags", contextFrom: "group", placeholder: "Start typing, or pick a suggestion" },
     ],
     publications: [
         { name: "authors", label: "Authors", wide: true, placeholder: "A. Rahman, Y. Name, B. Karim" },
@@ -108,27 +110,6 @@ export function itemSummary(type, item) {
     return { title: first || "Untitled", detail: second };
 }
 
-function TagInput({ id, values, onChange, placeholder }) {
-    const [text, setText] = useState(values.join(", "));
-    return (
-        <Input
-            id={id}
-            value={text}
-            placeholder={placeholder}
-            onChange={(event) => {
-                setText(event.target.value);
-                onChange(
-                    event.target.value
-                        .split(",")
-                        .map((value) => value.trim())
-                        .filter(Boolean)
-                );
-            }}
-            onBlur={() => setText(values.join(", "))}
-        />
-    );
-}
-
 const ItemFields = ({ type, item, onChange, templateId }) => {
     const baseId = useId();
     const set = (name, value) => onChange({ ...item, [name]: value });
@@ -189,7 +170,13 @@ const ItemFields = ({ type, item, onChange, templateId }) => {
                                 </SelectContent>
                             </Select>
                         ) : field.kind === "tags" ? (
-                            <TagInput id={id} values={value} placeholder={field.placeholder} onChange={(list) => set(field.name, list)} />
+                            <SkillPicker
+                                id={id}
+                                values={value}
+                                placeholder={field.placeholder}
+                                context={field.contextFrom ? item[field.contextFrom] : field.context}
+                                onChange={(list) => set(field.name, list)}
+                            />
                         ) : (
                             <Input
                                 id={id}
@@ -197,10 +184,18 @@ const ItemFields = ({ type, item, onChange, templateId }) => {
                                 value={value}
                                 maxLength={field.kind === "month" ? undefined : 300}
                                 placeholder={field.placeholder}
+                                list={field.options ? `${id}-options` : undefined}
                                 disabled={field.disabledBy ? item[field.disabledBy] : false}
                                 onChange={(event) => set(field.name, event.target.value)}
                                 className={field.kind === "month" ? "[color-scheme:dark]" : undefined}
                             />
+                        )}
+                        {field.options && field.kind !== "select" && (
+                            <datalist id={`${id}-options`}>
+                                {field.options.map((option) => (
+                                    <option key={option} value={option} />
+                                ))}
+                            </datalist>
                         )}
                     </div>
                 );
