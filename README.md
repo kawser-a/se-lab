@@ -1,15 +1,15 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
 ## Getting Started
-This project uses npm@10.9.2
+Requires Node.js 22.13 or newer.
 
-1. First, install the necessary packages:
+1. First, install the necessary packages. This also generates the Prisma client:
 
 ```
 npm install
 ```
 
-2. Generate Prisma Client
+2. If you change `prisma/schema.prisma` later, regenerate the client:
 
 ```bash
 npx prisma generate
@@ -32,6 +32,9 @@ GROQ_API_KEY=""
 GROQ_MODELS="openai/gpt-oss-120b,openai/gpt-oss-20b"
 # Optional. Force one order for every request, e.g. "groq,gemini".
 AI_PROVIDER_ORDER=""
+# Production only. From the Inngest dashboard, for the weekly industry insights job.
+INNGEST_EVENT_KEY=""
+INNGEST_SIGNING_KEY=""
 ```
 
 At least one of `GEMINI_API_KEY` or `GROQ_API_KEY` is needed. With both set, short
