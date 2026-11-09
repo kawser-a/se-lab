@@ -50,7 +50,7 @@ export default function Team() {
     };
 
     return (
-        <section id="team" className="page-container scroll-mt-28 px-6 text-white mt-20 relative">
+        <section id="team" className="page-container scroll-mt-28 px-2 sm:px-6 text-white mt-20 relative">
             <div className="w-full h-auto mx-auto">
                 {/* Headings */}
                 <h2 className="text-center text-[#F4F4F5] text-3xl md:text-5xl font-extrabold tracking-tight leading-tight">

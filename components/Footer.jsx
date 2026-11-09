@@ -43,7 +43,7 @@ export default function Footer() {
     return (
         <main className="">
             <div className="h-[1px] w-full bg-gradient-to-r from-[#C9F300]/0 via-[#C9F300]/30 to-[#C9F300]/0 blur-sm" />
-            <div className="flex items-center justify-between border-b border-t border[#C9F300] px-80 py-6">
+            <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center lg:justify-between gap-4 sm:gap-8 border-b border-t px-6 lg:px-24 2xl:px-80 py-6">
                     <div className="flex items-center gap-4  tracking-wide cursor-pointer">
                         <h2 className="text-center text-[#D4D4D8] text-sm font-semibold tracking-wide ">
                             We protect your data.
@@ -67,11 +67,11 @@ export default function Footer() {
                         </h2>
                     </div>
             </div>
-            <footer className="page-container relative text-[#A1A1AA] py-16 px-4 ">
+            <footer className="page-container relative text-[#A1A1AA] py-10 md:py-16 px-2 sm:px-4">
                 <div className="w-full mx-auto grid grid-cols-1 md:grid-cols-4 gap-10">
                     {/* Left Section: Logo + Socials */}
                     <div className="space-y-6">
-                        <div className="flex items-center space-x-2 mb-16">
+                        <div className="flex items-center space-x-2 mb-6 md:mb-16">
                             <div className="w-10 h-10 bg-[#9EFF00] rounded-md flex items-center justify-center">
                                 <Image
                                     src={'/cub.svg'}
@@ -106,7 +106,7 @@ export default function Footer() {
                     </div>
 
                     {/* Link Columns */}
-                    <div className="grid grid-cols-3 col-span-3 gap-20">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:col-span-3 gap-8 lg:gap-20">
                         {LINK_COLUMNS.map((column) => (
                             <div key={column.title} className="border-l-2 pl-4 border-[#C9F300]">
                                 <h3 className="text-[#9EFF00] text-base font-semibold mb-4">{column.title}</h3>

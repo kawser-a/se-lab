@@ -72,7 +72,7 @@ const AnimatedCounter = ({ target, suffix = '' }) => {
             transition={{ duration: 0.5 }}
         >
             <motion.div
-                className='text-5xl font-bold text-center flex justify-center items-start'
+                className='text-4xl md:text-5xl font-bold text-center flex justify-center items-start'
                 animate={controls}
             >
                 {count}
@@ -101,7 +101,7 @@ const StatsBox = ({ children }) => {
     return (
         <motion.div
             ref={ref}
-            className='py-6 px-16 border border-[#2A2A2A] hover:border-[#9EFF00]/30 transition-all duration-300 rounded-2xl'
+            className='py-6 px-4 lg:px-16 border border-[#2A2A2A] hover:border-[#9EFF00]/30 transition-all duration-300 rounded-2xl'
             initial={{ opacity: 0, y: 30 }}
             animate={inView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.5 }}
@@ -118,7 +118,7 @@ const Stats = () => {
     return (
         <motion.section
             ref={ref}
-            className='mt-36 relative overflow-hidden'
+            className='mt-20 md:mt-36 relative overflow-hidden'
             initial={{ opacity: 0 }}
             animate={inView ? { opacity: 1 } : {}}
             transition={{ duration: 0.5 }}
@@ -126,7 +126,7 @@ const Stats = () => {
             <div className="absolute -top-40 -left-40 w-80 h-80 rounded-full bg-[#9EFF00] opacity-10 blur-3xl -z-10"></div>
             <div className="absolute -down-10 -right-20 w-80 h-80 rounded-full bg-[#9EFF00] opacity-10 blur-3xl -z-10"></div>
 
-            <div className='page-container px-6 mb-24'>
+            <div className='page-container px-2 sm:px-6 mb-12 md:mb-24'>
                 <motion.h2
                     className='text-center text-[#F4F4F5] text-3xl leading-tight md:text-5xl font-extrabold tracking-tight mt-8'
                     initial={{ opacity: 0, y: 20 }}
@@ -163,7 +163,7 @@ const Stats = () => {
             </div>
 
             <motion.div
-                className='page-container px-6 flex items-center justify-between'
+                className='page-container px-2 sm:px-6 grid grid-cols-2 gap-4 lg:flex lg:items-center lg:justify-between'
                 initial={{ opacity: 0 }}
                 animate={inView ? { opacity: 1 } : {}}
                 transition={{ delay: 0.6 }}

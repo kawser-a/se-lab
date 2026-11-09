@@ -364,12 +364,13 @@ body {
     }
   }
 
+  /* Starts half way along so the duplicated row fills the space on the left. */
   @keyframes scroll-right {
     0% {
-      transform: translateX(0);
+      transform: translateX(-50%);
     }
     100% {
-      transform: translateX(50%);
+      transform: translateX(0);
     }
   }
 
@@ -391,12 +392,13 @@ body {
     }
   }
 
+  /* Starts half way along so the duplicated row fills the space on the left. */
   @keyframes scroll-right {
     0% {
-      transform: translateX(0);
+      transform: translateX(-50%);
     }
     100% {
-      transform: translateX(50%);
+      transform: translateX(0);
     }
   }
 
