@@ -596,3 +596,50 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+/* AI suggestion card while it's being written: a lime light runs around the
+   border and the text lines shimmer. */
+@property --ai-angle {
+    syntax: "<angle>";
+    initial-value: 0deg;
+    inherits: false;
+}
+
+@keyframes ai-orbit {
+    to {
+        --ai-angle: 360deg;
+    }
+}
+
+@keyframes ai-shimmer {
+    from {
+        background-position: 100% 0;
+    }
+    to {
+        background-position: -100% 0;
+    }
+}
+
+.ai-working {
+    border-width: 1.5px;
+    border-color: transparent;
+    box-shadow: 0 0 18px -6px rgba(158, 255, 0, 0.35);
+    background:
+        linear-gradient(#2f3324, #2f3324) padding-box,
+        conic-gradient(from var(--ai-angle), rgba(158, 255, 0, 0.15) 0deg 200deg, #9eff00 310deg, #c9f300 340deg, rgba(158, 255, 0, 0.15) 360deg)
+            border-box;
+    animation: ai-orbit 1.6s linear infinite;
+}
+
+.ai-shimmer {
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.06) 25%, rgba(201, 243, 0, 0.18) 50%, rgba(255, 255, 255, 0.06) 75%);
+    background-size: 200% 100%;
+    animation: ai-shimmer 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ai-working,
+    .ai-shimmer {
+        animation: none;
+    }
+}

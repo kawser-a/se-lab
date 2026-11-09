@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Loader2, PenLine, Sparkles } from "lucide-react";
+import { useRef, useState } from "react";
+import { PenLine, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,8 @@ const SummaryEditor = ({ section, headline, onChange, onSuggest }) => {
     const [mode, setMode] = useState(section.content ? "write" : "assist");
     const [brief, setBrief] = useState({ role: headline ?? "", level: "", keywords: [], about: "" });
     const [suggestion, setSuggestion] = useState(null);
+    // Bumped on every request and on cancel, so a late reply can't reopen the card.
+    const request = useRef(0);
 
     const setContent = (content) => onChange({ ...section, content });
     const ready = brief.role.trim() || brief.about.trim() || brief.keywords.length > 0;
@@ -31,11 +33,13 @@ const SummaryEditor = ({ section, headline, onChange, onSuggest }) => {
             toast.error("Add the role, a few keywords or a line about the job first");
             return;
         }
+        const run = ++request.current;
         setSuggestion({ loading: true, text: "" });
         try {
             const text = await onSuggest(brief);
-            setSuggestion({ loading: false, text });
+            if (run === request.current) setSuggestion({ loading: false, text });
         } catch (error) {
+            if (run !== request.current) return;
             toast.error(error.message);
             setSuggestion(null);
         }
@@ -131,8 +135,8 @@ const SummaryEditor = ({ section, headline, onChange, onSuggest }) => {
                         />
                     </div>
                     <Button type="button" onClick={generate} disabled={suggestion?.loading}>
-                        {suggestion?.loading ? <Loader2 className="animate-spin" /> : <Sparkles />}
-                        Write my summary
+                        <Sparkles />
+                        {suggestion?.loading ? "Writing…" : "Write my summary"}
                     </Button>
                 </div>
             )}
@@ -141,13 +145,17 @@ const SummaryEditor = ({ section, headline, onChange, onSuggest }) => {
                 <AiSuggestion
                     suggestion={suggestion.text}
                     loading={suggestion.loading}
+                    kind="summary"
                     onAccept={() => {
                         setContent(suggestion.text);
                         setSuggestion(null);
                         setMode("write");
                     }}
                     onRetry={generate}
-                    onDismiss={() => setSuggestion(null)}
+                    onDismiss={() => {
+                        request.current++;
+                        setSuggestion(null);
+                    }}
                 />
             )}
         </div>

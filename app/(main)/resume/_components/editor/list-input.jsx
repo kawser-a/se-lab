@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Plus, Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
 import { suggestBullet } from "@/actions/resume";
@@ -11,6 +11,8 @@ import AiSuggestion from "./ai-suggestion";
 // Bullet points, one textarea each, with an optional AI rewrite per line.
 const ListInput = ({ label, values, onChange, templateId, allowAi = true, max = 12, placeholder }) => {
     const [suggesting, setSuggesting] = useState(null);
+    // Bumped on every request and on cancel, so a late reply can't reopen the card.
+    const request = useRef(0);
 
     const update = (index, value) => onChange(values.map((line, i) => (i === index ? value : line)));
     const remove = (index) => onChange(values.filter((_, i) => i !== index));
@@ -22,12 +24,15 @@ const ListInput = ({ label, values, onChange, templateId, allowAi = true, max = 
             return;
         }
 
+        const run = ++request.current;
         setSuggesting({ index, loading: true, text: "" });
         try {
             const result = await suggestBullet({ text, templateId });
+            if (run !== request.current) return;
             if (result.error) throw new Error(result.error);
             setSuggesting({ index, loading: false, text: result.text });
         } catch (error) {
+            if (run !== request.current) return;
             toast.error(error.message || "Couldn't write a suggestion. Please try again.");
             setSuggesting(null);
         }
@@ -82,7 +87,10 @@ const ListInput = ({ label, values, onChange, templateId, allowAi = true, max = 
                                 setSuggesting(null);
                             }}
                             onRetry={() => suggest(index)}
-                            onDismiss={() => setSuggesting(null)}
+                            onDismiss={() => {
+                                request.current++;
+                                setSuggesting(null);
+                            }}
                         />
                     )}
                 </div>
