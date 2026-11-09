@@ -32,6 +32,15 @@ GROQ_API_KEY=""
 GROQ_MODELS="openai/gpt-oss-120b,openai/gpt-oss-20b"
 # Optional. Force one order for every request, e.g. "groq,gemini".
 AI_PROVIDER_ORDER=""
+# The public URL of the site, used in blog share links.
+NEXT_PUBLIC_SITE_URL="http://localhost:3000"
+# Optional. SMTP account for newsletter sign-ups; the form shows an error without it.
+SMTP_HOST=""
+SMTP_PORT="465"
+SMTP_USER=""
+SMTP_PASS=""
+# Where new sign-up notifications are sent.
+EMAIL_TO=""
 # Production only. From the Inngest dashboard, for the weekly industry insights job.
 INNGEST_EVENT_KEY=""
 INNGEST_SIGNING_KEY=""
