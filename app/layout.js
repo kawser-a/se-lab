@@ -5,6 +5,8 @@ import Header from "@/components/header";
 import { ClerkProvider } from "@clerk/nextjs";
 import { dark } from "@clerk/themes";
 import { Toaster } from "sonner";
+import Footer from "@/components/Footer";
+import ConditionalNewsletter from "@/components/sub-comp/ConditionalNewsletter";
 
 const monaSans = Mona_Sans({
     variable: "--font-mona-sans",
@@ -36,8 +38,9 @@ export default function RootLayout({ children }) {
                                 <main className="min-h-screen pt-20">{children}</main>
                                 <Toaster richColors/>
 
-                                {/* footer bg-muted */}
                                 <footer className="bg-gradient-to-tr from-[#1E1E1E] to-[#121212]">
+                                    <ConditionalNewsletter/>
+                                    <Footer/>
                                 </footer>
 
                         </ThemeProvider>
