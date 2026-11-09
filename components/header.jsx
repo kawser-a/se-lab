@@ -1,10 +1,10 @@
 import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton } from '@clerk/nextjs'
 import Link from 'next/link'
 import { Button } from './ui/button'
-import { ArrowDown, ChevronDown, FileText, GraduationCap, LayoutDashboard, PenBox, StarIcon } from 'lucide-react'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu'
+import { ChevronDown } from 'lucide-react'
 import { checkUser } from '@/lib/checkUser'
 import Image from 'next/image'
+import MobileNav from './mobile-nav'
 
 const Header = async () => {
     try {
@@ -28,7 +28,11 @@ const Header = async () => {
 
                     <div className="flex items-center gap-2 md:gap-4">
                         <SignedIn>
-                            <Link href="/dashboard">
+                            <div className="md:hidden">
+                                <MobileNav />
+                            </div>
+
+                            <Link href="/dashboard" className="hidden md:block">
                                 <div>
                                     <Button className="h-10 gap-1 text-sm md:text-base font-medium tracking-wide leading-normal py-2 px-4 rounded-md bg-transparent border-2 border-[#C9F300] text-white transition-colors duration-300
                                     hover:bg-[#C9F300]">
@@ -38,7 +42,7 @@ const Header = async () => {
                                 </div>
                             </Link>
 
-                            <div className="relative group inline-block">
+                            <div className="relative group hidden md:inline-block">
                                 <button
                                     className="h-10 rounded-md text-black text-sm md:text-base font-medium tracking-wide leading-normal py-2 px-4 bg-gradient-to-r from-[#9EFF00] via-[#C9F300] to-[#9EFF00] bg-[length:200%_200%] animate-glow-sweep
                                     shadow-[0_0_15px_-3px_#9EFF00] hover:shadow-[0_0_30px_-3px_#C9F300]
@@ -58,6 +62,7 @@ const Header = async () => {
                                     className="absolute left-0 mt-4 w-56 rounded-xl bg-[#111] text-white font-bold
                                     shadow-lg shadow-[#9EFF00]/30 opacity-0 scale-95 invisible
                                     group-hover:opacity-100 group-hover:scale-100 group-hover:visible
+                                    group-focus-within:opacity-100 group-focus-within:scale-100 group-focus-within:visible
                                     transition-all duration-300 z-50 border border-[#9EFF00]/20"
                                 >
                                     <Link
