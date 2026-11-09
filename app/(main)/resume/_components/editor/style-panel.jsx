@@ -190,6 +190,17 @@ const StylePanel = ({ theme, sections, onChange }) => {
                         ["LETTER", "Letter"],
                     ]}
                 />
+                {theme.templateId !== "creative" && (
+                    <Segmented
+                        legend="Header"
+                        value={theme.headerAlign ?? "center"}
+                        onChange={(headerAlign) => set({ headerAlign })}
+                        options={[
+                            ["center", "Centred"],
+                            ["left", "Left"],
+                        ]}
+                    />
+                )}
                 {theme.templateId === "academic" && (
                     <Segmented
                         legend="Citation style"

@@ -236,11 +236,10 @@ export function SectionBody({ t, section }) {
     return section.items.filter((item) => item.visible).map((item) => <Item key={item.id} t={t} item={item} />);
 }
 
-function contactRows(basics) {
+function contactItems(basics) {
     const details = [
+        basics.phone && { text: basics.phone, href: `tel:${basics.phone.replace(/[^\d+]/g, "")}` },
         basics.email && { text: basics.email, href: `mailto:${basics.email}` },
-        basics.phone && { text: basics.phone },
-        basics.location && { text: basics.location },
     ].filter(Boolean);
 
     // The same profile added twice would otherwise be printed twice.
@@ -255,7 +254,7 @@ function contactRows(basics) {
             return true;
         });
 
-    return [details, links].filter((row) => row.length);
+    return [...details, ...links];
 }
 
 function ContactItem({ item, color, fontSize }) {
@@ -269,19 +268,19 @@ function ContactItem({ item, color, fontSize }) {
     );
 }
 
-// Contact details on one line and links on the next. Each item and the
-// divider before it wrap together, so an item is never split across lines.
+// Phone, email and links on one line, split by light dividers. Each item
+// wraps together with the divider before it, so nothing breaks mid-address.
 export function ContactLine({ t, basics, color, stacked = false, align = "flex-start", style }) {
-    const rows = contactRows(basics);
-    if (rows.length === 0) return null;
-
-    const ink = color ?? t.muted;
+    const items = contactItems(basics);
+    const ink = color ?? t.accent;
     const fontSize = t.m.small;
 
     if (stacked) {
+        const all = basics.location ? [...items.slice(0, 2), { text: basics.location }, ...items.slice(2)] : items;
+        if (all.length === 0) return null;
         return (
             <View style={style}>
-                {rows.flat().map((item, index) => (
+                {all.map((item, index) => (
                     <View key={index} style={{ marginBottom: 2 }}>
                         <ContactItem item={item} color={ink} fontSize={fontSize} />
                     </View>
@@ -290,16 +289,14 @@ export function ContactLine({ t, basics, color, stacked = false, align = "flex-s
         );
     }
 
+    if (items.length === 0) return null;
+
     return (
-        <View style={style}>
-            {rows.map((row, rowIndex) => (
-                <View key={rowIndex} style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: align, marginTop: rowIndex ? 2 : 0 }}>
-                    {row.map((item, index) => (
-                        <View key={index} style={{ flexDirection: "row", alignItems: "center" }}>
-                            {index > 0 ? <Text style={{ fontSize, color: "#9CA3AF", marginHorizontal: 6 }}>|</Text> : null}
-                            <ContactItem item={item} color={ink} fontSize={fontSize} />
-                        </View>
-                    ))}
+        <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: align, ...style }}>
+            {items.map((item, index) => (
+                <View key={index} style={{ flexDirection: "row", alignItems: "center" }}>
+                    {index > 0 ? <Text style={{ fontSize, color: "#9CA3AF", marginHorizontal: 7 }}>|</Text> : null}
+                    <ContactItem item={item} color={ink} fontSize={fontSize} />
                 </View>
             ))}
         </View>

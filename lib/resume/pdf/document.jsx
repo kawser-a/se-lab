@@ -40,17 +40,32 @@ function PageNumber({ t, name }) {
     );
 }
 
+// Name, headline, location and contact details for the one-column templates.
+// Centred by default; the Style tab can switch it to the left.
+function Header({ t, basics, nameScale = 1, headlineColor }) {
+    const centered = t.theme.headerAlign !== "left";
+    const align = centered ? "center" : "flex-start";
+    const textAlign = centered ? "center" : "left";
+
+    return (
+        <View style={{ alignItems: align, marginBottom: t.m.sectionGap * 1.1 }}>
+            <Text style={{ fontFamily: t.fonts.heading, fontSize: t.m.name * nameScale, fontWeight: 700, color: t.ink, textAlign }}>
+                {basics.name}
+            </Text>
+            {basics.headline ? (
+                <Text style={{ fontSize: t.m.headline, color: headlineColor ?? t.ink, marginTop: 3, textAlign }}>{basics.headline}</Text>
+            ) : null}
+            {basics.location ? <Text style={{ fontSize: t.m.small, color: t.muted, marginTop: 3, textAlign }}>{basics.location}</Text> : null}
+            <ContactLine t={t} basics={basics} align={align} style={{ marginTop: 3 }} />
+        </View>
+    );
+}
+
 function DeveloperTemplate({ t, data }) {
     const { basics } = data;
     return (
         <>
-            <View style={{ marginBottom: t.m.sectionGap }}>
-                <Text style={{ fontFamily: t.fonts.heading, fontSize: t.m.name, fontWeight: 700, color: t.ink }}>{basics.name}</Text>
-                {basics.headline ? (
-                    <Text style={{ fontSize: t.m.headline, fontWeight: 600, color: t.accent, marginTop: 2 }}>{basics.headline}</Text>
-                ) : null}
-                <ContactLine t={t} basics={basics} style={{ marginTop: 5 }} />
-            </View>
+            <Header t={t} basics={basics} />
             {visibleSections(data, "developer").map((section) => (
                 <Section
                     key={section.id}
@@ -83,13 +98,7 @@ function AcademicTemplate({ t, data }) {
     const { basics } = data;
     return (
         <>
-            <View style={{ alignItems: "center", marginBottom: t.m.sectionGap * 1.2 }}>
-                <Text style={{ fontFamily: t.fonts.heading, fontSize: t.m.name * 0.95, fontWeight: 700, color: t.ink }}>{basics.name}</Text>
-                {basics.headline ? (
-                    <Text style={{ fontSize: t.m.headline, color: t.muted, marginTop: 2 }}>{basics.headline}</Text>
-                ) : null}
-                <ContactLine t={t} basics={basics} align="center" style={{ marginTop: 4 }} />
-            </View>
+            <Header t={t} basics={basics} nameScale={0.95} />
             {visibleSections(data, "academic").map((section) => (
                 <Section
                     key={section.id}
@@ -114,13 +123,7 @@ function GraduateTemplate({ t, data }) {
     const band = tint(t.accent, 0.88);
     return (
         <>
-            <View style={{ marginBottom: t.m.sectionGap }}>
-                <Text style={{ fontFamily: t.fonts.heading, fontSize: t.m.name, fontWeight: 700, color: t.ink }}>{basics.name}</Text>
-                {basics.headline ? (
-                    <Text style={{ fontSize: t.m.headline, color: t.muted, marginTop: 2 }}>{basics.headline}</Text>
-                ) : null}
-                <ContactLine t={t} basics={basics} style={{ marginTop: 5 }} />
-            </View>
+            <Header t={t} basics={basics} headlineColor={t.muted} />
             {visibleSections(data, "graduate").map((section) => (
                 <Section
                     key={section.id}
