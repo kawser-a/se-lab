@@ -26,7 +26,18 @@ GEMINI_API_KEY=""
 GEMINI_MODEL=""
 # Optional. Comma-separated models to try when the main one is busy.
 GEMINI_FALLBACK_MODELS="gemini-3.5-flash-lite"
+# Optional but recommended. Free key from https://console.groq.com/keys
+GROQ_API_KEY=""
+# Optional. Comma-separated, tried in order.
+GROQ_MODELS="openai/gpt-oss-120b,openai/gpt-oss-20b"
+# Optional. Force one order for every request, e.g. "groq,gemini".
+AI_PROVIDER_ORDER=""
 ```
+
+At least one of `GEMINI_API_KEY` or `GROQ_API_KEY` is needed. With both set, short
+CV suggestions go to Groq first because it replies in about a second, and longer
+jobs like industry insights and quizzes go to Gemini first. Either one takes over
+when the other is busy or rate limited.
 
 Then apply the database migrations:
 

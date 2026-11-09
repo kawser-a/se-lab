@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server"
-import { generateJSON } from "@/lib/gemini";
+import { generateJSON } from "@/lib/ai";
 
 
 export const generateAIInsights = async (industry) => {

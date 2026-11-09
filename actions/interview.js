@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
-import { generateJSON, generateText } from "@/lib/gemini";
+import { generateJSON, generateText } from "@/lib/ai";
 
 
 
@@ -93,7 +93,7 @@ export async function saveQuizResult(questions, answers, score) {
         `;
 
         try {
-            improvementTip = await generateText(improvementPrompt);
+            improvementTip = await generateText(improvementPrompt, { speed: "fast", maxTokens: 150 });
             console.log(improvementTip);
         } catch (error) {
             console.error("Error generating improvement tip:", error);

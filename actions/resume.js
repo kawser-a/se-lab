@@ -3,7 +3,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/prisma";
-import { AIUnavailableError, generateText } from "@/lib/gemini";
+import { AIUnavailableError, generateText } from "@/lib/ai";
 import { resumeDataSchema, resumeThemeSchema, resumeTitleSchema } from "@/lib/resume/schema";
 import { emptyResumeData, SECTION_META } from "@/lib/resume/sections";
 import { SUMMARY_LEVELS, summaryBriefSchema } from "@/lib/resume/summary";
@@ -180,7 +180,7 @@ export async function suggestBullet({ text, templateId }) {
     `;
 
     return aiResult(async () => {
-        const suggestion = await generateText(prompt);
+        const suggestion = await generateText(prompt, { speed: "fast", maxTokens: 120 });
         return suggestion.replace(/^[-•*\s"]+|["\s]+$/g, "").replace(/\.$/, "");
     });
 }
@@ -229,5 +229,5 @@ export async function suggestSummary(id, brief = {}) {
         Reply with the summary only.
     `;
 
-    return aiResult(() => generateText(prompt));
+    return aiResult(() => generateText(prompt, { speed: "fast", maxTokens: 250 }));
 }
