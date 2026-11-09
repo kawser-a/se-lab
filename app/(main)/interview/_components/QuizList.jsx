@@ -19,7 +19,7 @@ const QuizList = ({ assesments }) => {
         <>
             <Card>
                 <CardHeader>
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                             <CardTitle className="gradient-title text-3xl md:text-4xl">
                                 Recent Quizzes
@@ -28,7 +28,7 @@ const QuizList = ({ assesments }) => {
                                 Review your past quiz performance
                             </CardDescription>
                         </div>
-                        <div className='flex gap-4 items-center justify-center'>
+                        <div className='flex flex-wrap gap-3 sm:gap-4 items-center'>
                                 <Link href="/interview/automatic_interview">
                                     <Button className="bg-green-600 text-white px-4 py-2 rounded hover:text-black">
                                         Start Interview
