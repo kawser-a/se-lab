@@ -9,6 +9,9 @@
     "lint": "next lint",
     "test": "vitest run"
   },
+  "engines": {
+    "node": ">=22.13"
+  },
   "dependencies": {
     "@clerk/nextjs": "^6.17.0",
     "@clerk/themes": "^2.2.35",
