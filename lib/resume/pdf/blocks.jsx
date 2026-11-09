@@ -236,30 +236,72 @@ export function SectionBody({ t, section }) {
     return section.items.filter((item) => item.visible).map((item) => <Item key={item.id} t={t} item={item} />);
 }
 
-export function ContactLine({ t, basics, color, separator = " · ", style }) {
-    const parts = [
+function contactRows(basics) {
+    const details = [
         basics.email && { text: basics.email, href: `mailto:${basics.email}` },
         basics.phone && { text: basics.phone },
         basics.location && { text: basics.location },
-        ...basics.links.filter((link) => link.url).map((link) => ({ text: displayUrl(link.url), href: toHref(link.url) })),
     ].filter(Boolean);
 
-    if (parts.length === 0) return null;
+    // The same profile added twice would otherwise be printed twice.
+    const seen = new Set();
+    const links = basics.links
+        .filter((link) => link.url.trim())
+        .map((link) => ({ text: displayUrl(link.url.trim()), href: toHref(link.url.trim()) }))
+        .filter((link) => {
+            const key = link.text.toLowerCase();
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
+
+    return [details, links].filter((row) => row.length);
+}
+
+function ContactItem({ item, color, fontSize }) {
+    const style = { fontSize, color, textDecoration: "none" };
+    return item.href ? (
+        <Link src={item.href} style={style}>
+            {item.text}
+        </Link>
+    ) : (
+        <Text style={style}>{item.text}</Text>
+    );
+}
+
+// Contact details on one line and links on the next. Each item and the
+// divider before it wrap together, so an item is never split across lines.
+export function ContactLine({ t, basics, color, stacked = false, align = "flex-start", style }) {
+    const rows = contactRows(basics);
+    if (rows.length === 0) return null;
+
+    const ink = color ?? t.muted;
+    const fontSize = t.m.small;
+
+    if (stacked) {
+        return (
+            <View style={style}>
+                {rows.flat().map((item, index) => (
+                    <View key={index} style={{ marginBottom: 2 }}>
+                        <ContactItem item={item} color={ink} fontSize={fontSize} />
+                    </View>
+                ))}
+            </View>
+        );
+    }
 
     return (
-        <Text style={{ fontSize: t.m.small, color: color ?? t.muted, lineHeight: 1.4, ...style }}>
-            {parts.map((part, index) => (
-                <Text key={index}>
-                    {index ? separator : ""}
-                    {part.href ? (
-                        <Link src={part.href} style={{ color: color ?? t.muted, textDecoration: "none" }}>
-                            {part.text}
-                        </Link>
-                    ) : (
-                        part.text
-                    )}
-                </Text>
+        <View style={style}>
+            {rows.map((row, rowIndex) => (
+                <View key={rowIndex} style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: align, marginTop: rowIndex ? 2 : 0 }}>
+                    {row.map((item, index) => (
+                        <View key={index} style={{ flexDirection: "row", alignItems: "center" }}>
+                            {index > 0 ? <Text style={{ fontSize, color: "#9CA3AF", marginHorizontal: 6 }}>|</Text> : null}
+                            <ContactItem item={item} color={ink} fontSize={fontSize} />
+                        </View>
+                    ))}
+                </View>
             ))}
-        </Text>
+        </View>
     );
 }

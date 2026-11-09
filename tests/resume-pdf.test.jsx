@@ -56,3 +56,13 @@ describe.each(TEMPLATE_LIST.map((template) => template.id))("%s template", (temp
         expect(result.pages).toBe(1);
     });
 });
+
+describe("contact details", () => {
+    it("prints a link added twice only once", async () => {
+        const data = structuredClone(sampleResume);
+        data.basics.links.push({ id: "dup", label: "GitHub", url: "github.com/username" });
+        const buffer = await renderToBuffer(<ResumeDocument data={data} theme={defaultTheme("developer")} />);
+        const { text } = await extract(buffer);
+        expect(text.match(/github\.com\/username(?!\/)/g)).toHaveLength(1);
+    });
+});

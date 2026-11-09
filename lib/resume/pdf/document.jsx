@@ -49,7 +49,7 @@ function DeveloperTemplate({ t, data }) {
                 {basics.headline ? (
                     <Text style={{ fontSize: t.m.headline, fontWeight: 600, color: t.accent, marginTop: 2 }}>{basics.headline}</Text>
                 ) : null}
-                <ContactLine t={t} basics={basics} style={{ marginTop: 4 }} />
+                <ContactLine t={t} basics={basics} style={{ marginTop: 5 }} />
             </View>
             {visibleSections(data, "developer").map((section) => (
                 <Section
@@ -88,7 +88,7 @@ function AcademicTemplate({ t, data }) {
                 {basics.headline ? (
                     <Text style={{ fontSize: t.m.headline, color: t.muted, marginTop: 2 }}>{basics.headline}</Text>
                 ) : null}
-                <ContactLine t={t} basics={basics} style={{ marginTop: 4, textAlign: "center" }} />
+                <ContactLine t={t} basics={basics} align="center" style={{ marginTop: 4 }} />
             </View>
             {visibleSections(data, "academic").map((section) => (
                 <Section
@@ -119,7 +119,7 @@ function GraduateTemplate({ t, data }) {
                 {basics.headline ? (
                     <Text style={{ fontSize: t.m.headline, color: t.muted, marginTop: 2 }}>{basics.headline}</Text>
                 ) : null}
-                <ContactLine t={t} basics={basics} style={{ marginTop: 4 }} />
+                <ContactLine t={t} basics={basics} style={{ marginTop: 5 }} />
             </View>
             {visibleSections(data, "graduate").map((section) => (
                 <Section
@@ -173,7 +173,7 @@ function CreativeTemplate({ t, data }) {
                 <View style={{ width: sideWidth, paddingTop: t.m.margin, paddingHorizontal: t.m.margin * 0.55, paddingBottom: t.m.margin }}>
                     <View style={{ marginBottom: t.m.sectionGap }}>
                         {sideHeading("Contact")}
-                        <ContactLine t={t} basics={basics} color={sideInk} separator={"\n"} />
+                        <ContactLine t={t} basics={basics} color={sideInk} stacked />
                     </View>
                     {side.map((section) => (
                         <View key={section.id} style={{ marginBottom: t.m.sectionGap }}>
