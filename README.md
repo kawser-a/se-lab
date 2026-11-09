@@ -3,13 +3,13 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 ## Getting Started
 Requires Node.js 22.13 or newer.
 
-1. First, install the necessary packages:
+1. First, install the necessary packages. This also generates the Prisma client:
 
 ```
 npm install
 ```
 
-2. Generate Prisma Client
+2. If you change `prisma/schema.prisma` later, regenerate the client:
 
 ```bash
 npx prisma generate
