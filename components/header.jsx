@@ -19,19 +19,8 @@ const Header = async () => {
                 <nav className="h-14 flex items-center justify-between px-4 md:px-4">
                     <Link href="/" className="flex items-center h-full font-bold leading-normal tracking-wide text-2xl">
                         <div className='flex items-center justify-center gap-1'>
-                            <div>
-                                <div className='h-9 w-10 bg-[#9EFF00] rounded-md relative final-glow'
-                                    animate={{ rotateY: [0, 360], rotateX: [0, 360] }}
-                                    transition={{ repeat: Infinity, duration: 5, ease: "linear" }}
-                                >
-                                    <Image
-                                        src={'/cub.svg'}
-                                        height={25}
-                                        width={25}
-                                        alt='logo'
-                                        className='absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 '
-                                    />
-                                </div>
+                            <div className='flex h-9 w-10 items-center justify-center rounded-md bg-[#9EFF00]'>
+                                <Image src='/cub.svg' height={25} width={25} alt='' className='logo-dice' priority />
                             </div>
                             <h1>Growth<span className='sec-col'>Grid</span></h1>
                         </div>
