@@ -1,27 +1,23 @@
-import { getIndustryInsights } from '@/actions/dashboard';
-import { getUserOnboardingStatus } from '@/actions/user';
-import { redirect } from 'next/navigation';
-import React from 'react'
-import DashboardView from './_components/DashboardView';
+import { redirect } from "next/navigation";
+import { getIndustryInsights } from "@/actions/dashboard";
+import DashboardView from "./_components/DashboardView";
+
+export const metadata = {
+    title: "Industry Insights | GrowthGrid",
+};
 
 const IndustryInsightsPage = async () => {
+    const result = await getIndustryInsights();
+    if (!result.profile.industry) redirect("/onboarding");
 
-    //check if user is already onboard
-    const { isOnboarded } = await getUserOnboardingStatus();
+    // Dates as strings for the client components.
+    const insight = result.insight && {
+        ...result.insight,
+        lastUpdated: result.insight.lastUpdated.toISOString(),
+        nextUpdate: result.insight.nextUpdate.toISOString(),
+    };
 
-    if (!isOnboarded) {
-        redirect("/onboarding");
-        return null;
-    }
+    return <DashboardView profile={result.profile} insight={insight} needsCountry={result.needsCountry} error={result.error} />;
+};
 
-    const insights = await getIndustryInsights();
-
-
-    return (
-        <div className='conatiner mx-auto'>
-            <DashboardView insights={insights} />
-        </div>
-    )
-}
-
-export default IndustryInsightsPage
+export default IndustryInsightsPage;

@@ -137,7 +137,10 @@ model User {
     name            String?
     imageUrl        String?
     industry        String? // Combined industry-subindustry (e.g., "tech-software-development")
-    industryInsight IndustryInsight? @relation(fields: [industry], references: [industry])
+    // ISO code of the job market they work in, e.g. "BD". Insights are looked
+    // up by industry and country rather than linked, so saving a profile
+    // never depends on the AI having written them yet.
+    country         String?
     createdAt       DateTime         @default(now())
     updatedAt       DateTime         @updatedAt
 
@@ -151,6 +154,8 @@ model User {
     resumes        Resume[]
     coverLetter    CoverLetter[]
     voiceInterviews VoiceInterview[]
+
+    @@index([industry, country])
 }
 
 model Assessment {
@@ -200,10 +205,9 @@ model CoverLetter {
 // Combined Industry Trends and Salary Insights
 model IndustryInsight {
     id       String @id @default(cuid())
-    industry String @unique // The industry this data belongs to (e.g., "tech-software-development")
-
-    // Users in this industry
-    users User[]
+    industry String // The industry this data belongs to (e.g., "tech-software-development")
+    country  String @default("US") // The job market it describes; salaries are in its currency
+    currency String @default("USD")
 
     // Salary data
     salaryRanges Json[] // Array of { role: string, min: float, max: float, median: float, location: string? }
@@ -220,10 +224,15 @@ model IndustryInsight {
     // Learning suggestions
     recommendedSkills String[] // Skills recommended for the industry
 
+    summary     String? // Two or three sentences on the market right now
+    skillDemand Json[]  @default([]) // [{ skill, demand: 0-100, direction: "RISING" | "STEADY" | "FALLING" }]
+    trends      Json[]  @default([]) // [{ name, detail }]: keyTrends with why each matters
+
     lastUpdated DateTime @default(now())
     nextUpdate  DateTime // Scheduled update time
 
-    @@index([industry])
+    @@unique([industry, country])
+    @@index([nextUpdate])
 }
 
 enum DemandLevel {
