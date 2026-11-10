@@ -1,11 +1,13 @@
 import { getAssesments } from "@/actions/interview";
+import { getVoiceInterviews } from "@/actions/voice-interview";
 import PerformanceChart from "./_components/PerformanceChart";
 import QuizList from "./_components/QuizList";
 import StatsCards from "./_components/StatsCards";
+import VoiceInterviewList from "./_components/VoiceInterviewList";
 
 
 const InterviewPage = async () => {
-    const assesments = await getAssesments();
+    const [assesments, voiceInterviews] = await Promise.all([getAssesments(), getVoiceInterviews()]);
     return (
         <div className='pt-4'>
             <div className=''>
@@ -16,6 +18,7 @@ const InterviewPage = async () => {
                 </h1>
 
                 <div className='space-y-6'>
+                    <VoiceInterviewList interviews={voiceInterviews} />
                     <StatsCards assesments={assesments} />
                     <PerformanceChart assesments={assesments} />
                     <QuizList assesments={assesments} />

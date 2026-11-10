@@ -32,6 +32,10 @@ GROQ_API_KEY=""
 GROQ_MODELS="openai/gpt-oss-120b,openai/gpt-oss-20b"
 # Optional. Force one order for every request, e.g. "groq,gemini".
 AI_PROVIDER_ORDER=""
+# Optional. Voice interviews a user can start in 24 hours (default 5).
+VOICE_INTERVIEW_DAILY_LIMIT=""
+# Optional. Whisper model for browsers without built-in speech recognition.
+GROQ_TRANSCRIPTION_MODEL="whisper-large-v3-turbo"
 # The public URL of the site, used in blog share links.
 NEXT_PUBLIC_SITE_URL="http://localhost:3000"
 # Optional. SMTP account for newsletter sign-ups; the form shows an error without it.

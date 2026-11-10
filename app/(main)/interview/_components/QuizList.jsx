@@ -7,7 +7,6 @@ import { format } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import React, { useState } from 'react'
 import QuizResult from './QuizResult';
-import Link from 'next/link';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 const QuizList = ({ assesments }) => {
@@ -29,11 +28,6 @@ const QuizList = ({ assesments }) => {
                             </CardDescription>
                         </div>
                         <div className='flex flex-wrap gap-3 sm:gap-4 items-center'>
-                                <Link href="/interview/automatic_interview">
-                                    <Button className="bg-green-600 text-white px-4 py-2 rounded hover:text-black">
-                                        Start Interview
-                                    </Button>
-                                </Link>
                                 <Button onClick={() => router.push("/interview/mock")}>
                                     Start New Quiz
                                 </Button>
