@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { format } from "date-fns";
-import { CheckCircle2, ChevronLeft, Mic, Target, TrendingUp } from "lucide-react";
+import { ArrowRight, CheckCircle2, ChevronLeft, Mic, Target, TrendingUp } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { INTERVIEW_TYPES, LEVELS } from "@/lib/interview/config";
-import { CRITERIA } from "@/lib/interview/scoring";
+import { CRITERIA, normalizeRatings } from "@/lib/interview/scoring";
 import { cn } from "@/lib/utils";
 import RetryFeedback from "./retry-feedback";
 
@@ -40,6 +40,42 @@ function ScoreRing({ score }) {
                 <span className="text-4xl font-bold">{score}</span>
                 <span className={cn("text-sm font-medium", tone)}>{label}</span>
             </div>
+        </div>
+    );
+}
+
+function SkillCard({ criterion, value, note }) {
+    return (
+        <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-black/20 p-4">
+            <div className="flex items-baseline justify-between gap-2">
+                <h3 className="text-sm font-semibold">{criterion.label}</h3>
+                <span className="text-sm text-muted-foreground">
+                    <strong className="text-xl text-white">{value ?? "–"}</strong> / 5
+                </span>
+            </div>
+            <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+                <div className="h-full rounded-full bg-[#9EFF00]" style={{ width: `${((value ?? 0) / 5) * 100}%` }} />
+            </div>
+            <p className="text-sm leading-relaxed text-muted-foreground">{note || criterion.description}</p>
+        </div>
+    );
+}
+
+// Three small bars for one answer's ratings.
+function RatingBars({ scores }) {
+    return (
+        <div className="grid gap-3 sm:grid-cols-3">
+            {Object.entries(CRITERIA).map(([key, criterion]) => (
+                <div key={key} className="space-y-1.5">
+                    <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">{criterion.label}</span>
+                        <span className="font-semibold">{scores[key] ?? "–"}/5</span>
+                    </div>
+                    <div className="h-1 overflow-hidden rounded-full bg-white/10">
+                        <div className="h-full rounded-full bg-[#9EFF00]" style={{ width: `${((scores[key] ?? 0) / 5) * 100}%` }} />
+                    </div>
+                </div>
+            ))}
         </div>
     );
 }
@@ -80,7 +116,7 @@ function Transcript({ turns, questionId }) {
                 .filter((turn) => turn.questionId === questionId)
                 .map((turn, index) => (
                     <div key={index} className="space-y-1">
-                        <p className="text-xs font-medium text-muted-foreground">{turn.kind === "follow-up" ? `Follow-up: ${turn.prompt}` : "Your answer"}</p>
+                        <p className="text-xs font-medium text-muted-foreground">{turn.kind === "follow-up" ? `Follow-up: ${turn.prompt}` : "What you said"}</p>
                         <p className={cn("rounded-lg bg-black/20 p-3 text-sm leading-relaxed", turn.skipped && "italic text-muted-foreground")}>
                             {turn.skipped ? "Skipped" : turn.answer}
                         </p>
@@ -92,16 +128,16 @@ function Transcript({ turns, questionId }) {
 
 const FeedbackView = ({ interview }) => {
     const { feedback, metrics, turns } = interview;
+    // Older reports used different criteria; show them in today's terms.
+    const criteria = normalizeRatings(feedback?.criteria);
     const questionIds = [...new Set(turns.map((turn) => turn.questionId))];
 
     return (
         <div className="mx-auto max-w-4xl space-y-6 pt-4 pb-16">
+            <Link href="/interview" className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-white">
+                <ChevronLeft className="size-4" /> Interview Preparation
+            </Link>
             <div className="flex flex-wrap items-center gap-3">
-                <Button variant="outline" size="icon" asChild>
-                    <Link href="/interview" aria-label="Back to interview preparation">
-                        <ChevronLeft />
-                    </Link>
-                </Button>
                 <div className="min-w-0 flex-1">
                     <h1 className="truncate text-2xl font-bold sm:text-3xl">{interview.role}</h1>
                     <p className="text-sm text-muted-foreground">
@@ -109,45 +145,50 @@ const FeedbackView = ({ interview }) => {
                         {format(new Date(interview.completedAt ?? interview.createdAt), "d MMM yyyy")}
                     </p>
                 </div>
-                <Button asChild>
-                    <Link href="/interview/voice/new">Practise again</Link>
+                <Button asChild className="rounded-full bg-[#9EFF00] text-black transition-all hover:-translate-y-0.5 hover:bg-[#b4ff33] active:scale-95">
+                    <Link href="/interview/voice/new">
+                        Practise again <ArrowRight />
+                    </Link>
                 </Button>
             </div>
 
             {feedback ? (
                 <>
-                    <section className="flex flex-col items-center gap-6 rounded-2xl border bg-card p-6 sm:flex-row sm:items-start sm:p-8">
-                        <ScoreRing score={feedback.score} />
-                        <div className="space-y-4">
-                            <p className="leading-relaxed">{feedback.summary}</p>
-                            <div className="grid gap-3 sm:grid-cols-2">
-                                {Object.entries(CRITERIA).map(([key, criterion]) => {
-                                    const value = feedback.criteria[key];
-                                    return (
-                                        <div key={key} title={criterion.description}>
-                                            <div className="mb-1 flex justify-between text-sm">
-                                                <span>{criterion.label}</span>
-                                                <span className="text-muted-foreground">{value == null ? "–" : `${value} / 5`}</span>
-                                            </div>
-                                            <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
-                                                <div className="h-full rounded-full bg-[#9EFF00]" style={{ width: `${((value ?? 0) / 5) * 100}%` }} />
-                                            </div>
-                                        </div>
-                                    );
-                                })}
+                    <section className="space-y-6 rounded-3xl border border-white/10 bg-card p-5 sm:p-8">
+                        <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-center">
+                            <ScoreRing score={feedback.score} />
+                            <div className="space-y-2 text-center sm:text-left">
+                                <p className="text-sm font-medium text-muted-foreground">Overall</p>
+                                <p className="text-lg leading-relaxed">{feedback.summary}</p>
                             </div>
+                        </div>
+                        <div className="grid gap-3 md:grid-cols-3">
+                            {Object.entries(CRITERIA).map(([key, criterion]) => (
+                                <SkillCard key={key} criterion={criterion} value={criteria?.[key]} note={feedback.skillNotes?.[key]} />
+                            ))}
                         </div>
                     </section>
 
                     {(feedback.topStrengths.length > 0 || feedback.focusAreas.length > 0) && (
                         <section className="grid gap-4 md:grid-cols-2">
-                            <div className="space-y-3 rounded-2xl border bg-card p-5">
-                                <h2 className="font-semibold">What went well</h2>
+                            <div className="space-y-4 rounded-3xl border border-white/10 bg-card p-5 sm:p-6">
+                                <h2 className="flex items-center gap-2 font-semibold">
+                                    <CheckCircle2 className="size-4 text-[#9EFF00]" /> What went well
+                                </h2>
                                 <List items={feedback.topStrengths} icon={CheckCircle2} tone="text-[#9EFF00]" />
                             </div>
-                            <div className="space-y-3 rounded-2xl border bg-card p-5">
-                                <h2 className="font-semibold">Focus on next</h2>
-                                <List items={feedback.focusAreas} icon={Target} tone="text-amber-300" />
+                            <div className="space-y-4 rounded-3xl border border-amber-300/20 bg-amber-300/[0.03] p-5 sm:p-6">
+                                <h2 className="flex items-center gap-2 font-semibold">
+                                    <Target className="size-4 text-amber-300" /> What to practise next
+                                </h2>
+                                <ol className="space-y-3">
+                                    {feedback.focusAreas.map((item, index) => (
+                                        <li key={item} className="flex gap-3 text-sm leading-relaxed">
+                                            <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-amber-300/15 text-xs font-semibold text-amber-200">{index + 1}</span>
+                                            <span>{item}</span>
+                                        </li>
+                                    ))}
+                                </ol>
                             </div>
                         </section>
                     )}
@@ -179,15 +220,18 @@ const FeedbackView = ({ interview }) => {
             )}
 
             <section className="space-y-3">
-                <h2 className="flex items-center gap-2 font-semibold">
-                    <TrendingUp className="size-4 text-[#9EFF00]" /> Question by question
-                </h2>
+                <div className="space-y-1">
+                    <h2 className="flex items-center gap-2 font-semibold">
+                        <TrendingUp className="size-4 text-[#9EFF00]" /> Question by question
+                    </h2>
+                    <p className="text-sm text-muted-foreground">Open a question to see your answer, how it was rated and what a stronger one would include.</p>
+                </div>
                 <Accordion type="multiple" className="space-y-2">
                     {questionIds.map((questionId, index) => {
                         const review = feedback?.questions.find((question) => question.questionId === questionId);
                         const main = turns.find((turn) => turn.questionId === questionId && turn.kind === "main");
                         return (
-                            <AccordionItem key={questionId} value={questionId} className="rounded-xl border bg-card px-4 last:border-b">
+                            <AccordionItem key={questionId} value={questionId} className="rounded-2xl border border-white/10 bg-card px-4 last:border-b sm:px-5">
                                 <AccordionTrigger className="gap-3 text-left hover:no-underline">
                                     <span className="flex min-w-0 flex-1 flex-col gap-1">
                                         <span className="text-xs text-muted-foreground">
@@ -203,23 +247,13 @@ const FeedbackView = ({ interview }) => {
                                     )}
                                 </AccordionTrigger>
                                 <AccordionContent className="space-y-5 pb-5">
-                                    <Transcript turns={turns} questionId={questionId} />
-
-                                    {review?.scores && (
-                                        <div className="flex flex-wrap gap-2">
-                                            {Object.entries(CRITERIA).map(([key, criterion]) => (
-                                                <span key={key} className="rounded-full bg-white/5 px-2.5 py-1 text-xs">
-                                                    {criterion.label} <strong className="text-[#C9F300]">{review.scores[key]}</strong>/5
-                                                </span>
-                                            ))}
-                                        </div>
-                                    )}
+                                    {review?.scores && <RatingBars scores={normalizeRatings(review.scores)} />}
 
                                     {review && (review.strengths.length > 0 || review.improvements.length > 0) && (
                                         <div className="grid gap-4 md:grid-cols-2">
                                             {review.strengths.length > 0 && (
                                                 <div className="space-y-2">
-                                                    <h3 className="text-sm font-semibold">Strengths</h3>
+                                                    <h3 className="text-sm font-semibold">What worked</h3>
                                                     <List items={review.strengths} icon={CheckCircle2} tone="text-[#9EFF00]" />
                                                 </div>
                                             )}
@@ -231,6 +265,8 @@ const FeedbackView = ({ interview }) => {
                                             )}
                                         </div>
                                     )}
+
+                                    <Transcript turns={turns} questionId={questionId} />
 
                                     {review?.strongerAnswer && (
                                         <div className="space-y-2 rounded-xl border border-[#9EFF00]/20 bg-[#9EFF00]/5 p-4">
