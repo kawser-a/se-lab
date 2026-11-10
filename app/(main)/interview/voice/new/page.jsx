@@ -7,8 +7,11 @@ export const metadata = {
     title: "Voice Interview | GrowthGrid",
 };
 
-const NewVoiceInterviewPage = async () => {
-    const defaults = await getVoiceSetupDefaults();
+// ?focus=Kubernetes (from the skill gaps on the insights page) starts the
+// form with that topic already added.
+const NewVoiceInterviewPage = async ({ searchParams }) => {
+    const [defaults, { focus }] = await Promise.all([getVoiceSetupDefaults(), searchParams]);
+    const initialFocus = typeof focus === "string" && focus.trim() ? [focus.trim().slice(0, 40)] : [];
 
     return (
         <div className="mx-auto max-w-3xl pt-4 pb-16">
@@ -22,7 +25,7 @@ const NewVoiceInterviewPage = async () => {
                     you did on understanding, technical depth and communication.
                 </p>
             </div>
-            <SetupForm defaults={defaults} />
+            <SetupForm defaults={defaults} initialFocus={initialFocus} />
         </div>
     );
 };

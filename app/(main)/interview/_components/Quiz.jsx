@@ -25,12 +25,14 @@ const LETTERS = ["A", "B", "C", "D"];
 const PRIMARY =
     "h-11 rounded-full bg-[#9EFF00] px-6 font-semibold text-black transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#b4ff33] active:translate-y-0 active:scale-[0.98] disabled:translate-y-0 disabled:bg-white/10 disabled:text-white/40";
 
-function Intro({ onStart, error }) {
+function Intro({ onStart, error, topic }) {
     return (
         <div className="space-y-6 rounded-3xl border border-white/10 bg-card p-6 sm:p-8">
             <div className="space-y-2">
-                <h2 className="text-2xl font-bold">Ten questions for your field</h2>
-                <p className="text-muted-foreground">Written for your industry and skills each time, so no two quizzes are the same.</p>
+                <h2 className="text-2xl font-bold">{topic ? `Ten questions on ${topic}` : "Ten questions for your field"}</h2>
+                <p className="text-muted-foreground">
+                    {topic ? "Written for your level and industry, all on this one skill." : "Written for your industry and skills each time, so no two quizzes are the same."}
+                </p>
             </div>
             <ul className="grid gap-3 sm:grid-cols-3">
                 {[
@@ -60,7 +62,7 @@ function Intro({ onStart, error }) {
     );
 }
 
-const Quiz = () => {
+const Quiz = ({ topic }) => {
     const router = useRouter();
     const [stage, setStage] = useState("intro"); // intro | writing | answering | saving | done
     const [questions, setQuestions] = useState([]);
@@ -76,7 +78,7 @@ const Quiz = () => {
         setStage("writing");
         setError(null);
         try {
-            const next = await generateQuiz();
+            const next = await generateQuiz({ topic });
             setQuestions(next);
             setAnswers(new Array(next.length).fill(null));
             setChecked(new Array(next.length).fill(false));
@@ -160,7 +162,7 @@ const Quiz = () => {
         return () => window.removeEventListener("beforeunload", warn);
     }, [stage]);
 
-    if (stage === "intro") return <Intro onStart={start} error={error} />;
+    if (stage === "intro") return <Intro onStart={start} error={error} topic={topic} />;
 
     if (stage === "writing") {
         return (

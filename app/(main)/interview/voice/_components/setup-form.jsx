@@ -141,13 +141,13 @@ function InterviewerPicker({ value, onChange }) {
     );
 }
 
-const SetupForm = ({ defaults }) => {
+const SetupForm = ({ defaults, initialFocus = [] }) => {
     const router = useRouter();
     const [role, setRole] = useState("");
     const [type, setType] = useState("mixed");
     const [level, setLevel] = useState(defaults.level);
     const [questionCount, setQuestionCount] = useState(QUESTION_COUNT.default);
-    const [focus, setFocus] = useState([]);
+    const [focus, setFocus] = useState(initialFocus);
     const [focusDraft, setFocusDraft] = useState("");
     const [interviewer, setInterviewer] = useState("hannah");
     const [starting, setStarting] = useState(false);
