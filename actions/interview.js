@@ -2,63 +2,41 @@
 
 import { db } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
-import { generateJSON, generateText } from "@/lib/ai";
+import { AIUnavailableError, generateJSON, generateText } from "@/lib/ai";
+import { buildQuizPrompt, combineQuizHalves, parseQuizQuestions, QUIZ_HALVES, QUIZ_JSON_SCHEMA } from "@/lib/interview/quiz";
 
-
-
-
-export async function generateQuiz() {
+async function getCurrentUser() {
     const { userId } = await auth();
     if (!userId) throw new Error("Unauthorized");
 
-    const user = await db.user.findUnique({
-        where: {
-            clerkUserId: userId,
-        },
-    });
-
+    const user = await db.user.findUnique({ where: { clerkUserId: userId } });
     if (!user) throw new Error("User not found");
-
-    const prompt = `
-                Generate 10 technical interview questions for a ${user.industry
-        } professional${user.skills?.length ? ` with expertise in ${user.skills.join(", ")}` : ""}.
-
-                Each question should be multiple choice with 4 options.
-
-                Return the response in this JSON format only, no additional text:
-                {
-                    "questions": [
-                        {
-                        "question": "string",
-                        "options": ["string", "string", "string", "string"],
-                        "correctAnswer": "string",
-                        "explanation": "string"
-                        }
-                    ]
-                }
-    `;
-
-    try {
-        const quiz = await generateJSON(prompt);
-
-        return quiz.questions;
-    } catch (error) {
-        console.error("Error generating quiz:", error);
-        throw new Error("Failed to generate quiz questions");
-    }
-
+    return user;
 }
 
+async function writeQuizHalf(user, half) {
+    const raw = await generateJSON(buildQuizPrompt(user, half), { speed: "fast", schema: QUIZ_JSON_SCHEMA, maxTokens: 1800, timeoutMs: 15000 });
+    return parseQuizQuestions(raw);
+}
 
+export async function generateQuiz() {
+    const user = await getCurrentUser();
+
+    // Both halves at once; a quiz is still worth taking if one comes back short.
+    const halves = await Promise.allSettled(QUIZ_HALVES.map((half) => writeQuizHalf(user, half)));
+    try {
+        return combineQuizHalves(halves.map((half) => (half.status === "fulfilled" ? half.value : [])));
+    } catch (error) {
+        const busy = halves.some((half) => half.status === "rejected" && half.reason instanceof AIUnavailableError);
+        console.error("Couldn't write the quiz:", error.message);
+        throw new Error(busy ? "The AI is busy right now. Please try again in a minute." : "Couldn't write your quiz this time. Please try again.");
+    }
+}
+
+// Saves straight away so the score shows at once. The improvement tip is
+// written separately, after, by writeQuizTip.
 export async function saveQuizResult(questions, answers, score) {
-    const { userId } = await auth();
-    if (!userId) throw new Error("Unauthorized");
-
-    const user = await db.user.findUnique({
-        where: { clerkUserId: userId },
-    });
-
-    if (!user) throw new Error("User not found");
+    const user = await getCurrentUser();
 
     const questionResults = questions.map((q, index) => ({
         question: q.question,
@@ -68,54 +46,47 @@ export async function saveQuizResult(questions, answers, score) {
         explanation: q.explanation,
     }));
 
-    // Get wrong answers
-    const wrongAnswers = questionResults.filter((q) => !q.isCorrect);
-
-    // Only generate improvement tips if there are wrong answers
-    let improvementTip = null;
-    if (wrongAnswers.length > 0) {
-        const wrongQuestionsText = wrongAnswers
-            .map(
-                (q) =>
-                    `Question: "${q.question}"\nCorrect Answer: "${q.answer}"\nUser Answer: "${q.userAnswer}"`
-            )
-            .join("\n\n");
-
-        const improvementPrompt = `
-                        The user got the following ${user.industry} technical interview questions wrong:
-
-                            ${wrongQuestionsText}
-
-                            Based on these mistakes, provide a concise, specific improvement tip.
-                            Focus on the knowledge gaps revealed by these wrong answers.
-                            Keep the response under 2 sentences and make it encouraging.
-                            Don't explicitly mention the mistakes, instead focus on what to learn/practice.
-        `;
-
-        try {
-            improvementTip = await generateText(improvementPrompt, { speed: "fast", maxTokens: 150 });
-            console.log(improvementTip);
-        } catch (error) {
-            console.error("Error generating improvement tip:", error);
-            // Continue without improvement tip if generation fails
-        }
-    }
-
     try {
-        const assessment = await db.assessment.create({
+        return await db.assessment.create({
             data: {
                 userId: user.id,
                 quizScore: score,
                 questions: questionResults,
                 category: "Technical",
-                improvementTip,
+                improvementTip: null,
             },
         });
-
-        return assessment;
     } catch (error) {
         console.error("Error saving quiz result:", error);
         throw new Error("Failed to save quiz result");
+    }
+}
+
+// A short, encouraging tip based on the questions they got wrong.
+export async function writeQuizTip(assessmentId) {
+    const user = await getCurrentUser();
+    const assessment = await db.assessment.findFirst({ where: { id: assessmentId, userId: user.id } });
+    if (!assessment) return { tip: null };
+    if (assessment.improvementTip) return { tip: assessment.improvementTip };
+
+    const wrong = assessment.questions.filter((q) => !q.isCorrect);
+    if (wrong.length === 0) return { tip: null };
+
+    const prompt = `The user got these ${user.industry ?? "technical"} interview questions wrong:
+
+${wrong.map((q) => `Question: "${q.question}"\nCorrect answer: "${q.answer}"\nTheir answer: "${q.userAnswer}"`).join("\n\n")}
+
+Write one concise, specific improvement tip, under 2 sentences, encouraging in tone.
+Focus on what to learn or practise next. Don't list the mistakes themselves.
+Reply with the tip only.`;
+
+    try {
+        const tip = (await generateText(prompt, { speed: "instant", maxTokens: 150 })).replace(/^["\s]+|["\s]+$/g, "");
+        await db.assessment.update({ where: { id: assessment.id }, data: { improvementTip: tip } });
+        return { tip };
+    } catch (error) {
+        console.error("Couldn't write the quiz tip:", error.message);
+        return { tip: null };
     }
 }
 
