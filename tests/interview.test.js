@@ -5,7 +5,7 @@ import { answerMetrics, countWords, findFillers, paceLabel } from "@/lib/intervi
 import { InvalidPlanError, normalizePlan } from "@/lib/interview/plan";
 import { closingLine, interviewerFor, leadIn, openingLine } from "@/lib/interview/script";
 import { searchRoles } from "@/lib/interview/roles";
-import { splitForSpeech } from "@/lib/interview/speech";
+import { revealWords, splitForSpeech } from "@/lib/interview/speech";
 import { buildFeedback, normalizeRatings, parseEvaluation, scoreFromRatings } from "@/lib/interview/scoring";
 
 const plan = {
@@ -236,6 +236,22 @@ describe("scoring", () => {
 
     it("rejects malformed feedback", () => {
         expect(() => parseEvaluation({ summary: "x", questions: [{ questionId: "q1", scores: { understanding: 9 } }] })).toThrow();
+    });
+});
+
+describe("revealWords", () => {
+    const line = "Tell me about a time you disagreed with a teammate.";
+
+    it("shows only whole words", () => {
+        const partial = revealWords(line, 0.3);
+        expect(line.startsWith(partial)).toBe(true);
+        expect(line[partial.length] === " " || partial === line).toBe(true);
+    });
+
+    it("shows nothing before and everything after", () => {
+        expect(revealWords(line, 0)).toBe("");
+        expect(revealWords(line, 1)).toBe(line);
+        expect(revealWords(line, 0.999)).toBe(line);
     });
 });
 
