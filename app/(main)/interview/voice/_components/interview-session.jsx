@@ -43,7 +43,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Textarea } from "@/components/ui/textarea";
 import { INTERVIEW_TYPES, LEVELS, MAX_ANSWER_CHARS, minutesFor } from "@/lib/interview/config";
 import { BACKCHANNELS, HOLD_LINE, NOT_CAUGHT } from "@/lib/interview/script";
-import { canRecord, createSpeaker, getRecognitionClass } from "@/lib/interview/speech";
+import { canRecord, createSpeaker, getRecognitionClass, microphoneBlockedByConnection, preferredVoiceMode } from "@/lib/interview/speech";
 import { cn } from "@/lib/utils";
 import { InterviewerTile, SelfTile } from "./call-tiles";
 import JoinControls from "./join-controls";
@@ -280,6 +280,7 @@ const InterviewSession = ({ initialView, capabilities }) => {
     const [pausedFor, setPausedFor] = useState(0);
     const [now, setNow] = useState(0);
     const [voiceAvailable, setVoiceAvailable] = useState(true);
+    const [insecure, setInsecure] = useState(false);
 
     const speaker = useRef(null);
     const viewRef = useRef(view);
@@ -292,7 +293,8 @@ const InterviewSession = ({ initialView, capabilities }) => {
 
     // Only the browser knows what it supports, so check after the first render.
     useEffect(() => {
-        setVoiceAvailable(Boolean(getRecognitionClass()) || (capabilities.serverTranscription && canRecord()));
+        setVoiceAvailable(!microphoneBlockedByConnection() && (Boolean(getRecognitionClass()) || (capabilities.serverTranscription && canRecord())));
+        setInsecure(microphoneBlockedByConnection());
         setCaptions(readSetting(CAPTIONS_KEY, true));
         setShowTranscript(readSetting(TRANSCRIPT_KEY, true));
     }, [capabilities.serverTranscription]);
@@ -599,7 +601,7 @@ const InterviewSession = ({ initialView, capabilities }) => {
 
         if (micStream) {
             setStream(micStream);
-            setMode(getRecognitionClass() ? "browser" : capabilities.serverTranscription && canRecord() ? "record" : "typed");
+            setMode(preferredVoiceMode(capabilities));
         } else {
             setMode("typed");
         }
@@ -683,7 +685,7 @@ const InterviewSession = ({ initialView, capabilities }) => {
     };
 
     const switchToVoice = () => {
-        setMode(getRecognitionClass() ? "browser" : "record");
+        setMode(preferredVoiceMode(capabilities));
         setProblem(null);
         setAutoListen(true);
     };
@@ -888,7 +890,7 @@ const InterviewSession = ({ initialView, capabilities }) => {
                                 </p>
                             </div>
 
-                            <JoinControls voiceAvailable={voiceAvailable} ready={ready} prepareError={prepareError} onRetryPrepare={prepare} resuming={resuming} onJoin={join} />
+                            <JoinControls voiceAvailable={voiceAvailable} insecure={insecure} ready={ready} prepareError={prepareError} onRetryPrepare={prepare} resuming={resuming} onJoin={join} />
                         </motion.aside>
                     ) : (
                         showTranscript && (

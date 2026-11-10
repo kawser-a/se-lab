@@ -38,7 +38,7 @@ function CheckRow({ icon, title, children, tone = "idle" }) {
 // The microphone is asked for when they press Join, so there's a single
 // step to take. If the browser already allows it, its level shows straight
 // away; otherwise they can test it first if they'd like to.
-const JoinControls = ({ voiceAvailable, ready, prepareError, onRetryPrepare, resuming, onJoin }) => {
+const JoinControls = ({ voiceAvailable, insecure = false, ready, prepareError, onRetryPrepare, resuming, onJoin }) => {
     const [mic, setMic] = useState("unknown"); // unknown | starting | live | blocked
     const [stream, setStream] = useState(null);
     const [level, setLevel] = useState(0);
@@ -127,8 +127,12 @@ const JoinControls = ({ voiceAvailable, ready, prepareError, onRetryPrepare, res
     let micRow;
     if (!voiceAvailable) {
         micRow = (
-            <CheckRow icon={<Keyboard />} title="You'll type your answers">
-                <p className="text-xs leading-relaxed text-muted-foreground">This browser can&apos;t take spoken answers. The interviewer still speaks each question.</p>
+            <CheckRow icon={<Keyboard />} title="You'll type your answers" tone={insecure ? "problem" : "idle"}>
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                    {insecure
+                        ? "Your browser only allows the microphone on a secure (https) connection, and this page isn't on one. The interviewer still speaks each question."
+                        : "This browser can't take spoken answers. The interviewer still speaks each question."}
+                </p>
             </CheckRow>
         );
     } else if (mic === "live") {
