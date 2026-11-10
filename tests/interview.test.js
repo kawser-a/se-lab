@@ -4,6 +4,7 @@ import { buildTurn, classifyAnswer, nextStep, parseFollowUp, shouldConsiderFollo
 import { answerMetrics, countWords, findFillers, paceLabel } from "@/lib/interview/metrics";
 import { InvalidPlanError, normalizePlan } from "@/lib/interview/plan";
 import { closingLine, interviewerFor, leadIn, openingLine } from "@/lib/interview/script";
+import { searchRoles } from "@/lib/interview/roles";
 import { splitForSpeech } from "@/lib/interview/speech";
 import { buildFeedback, parseEvaluation, scoreFromRatings } from "@/lib/interview/scoring";
 
@@ -234,3 +235,14 @@ describe("conversation script", () => {
     });
 });
 
+describe("searchRoles", () => {
+    it("ranks roles that start with the query first", () => {
+        expect(searchRoles("dev").map((r) => r.role).slice(0, 2)).toEqual(["DevOps Engineer", "Backend Developer"]);
+        expect(searchRoles("data")[0].role).toBe("Data Analyst");
+    });
+
+    it("finds words inside a role and returns nothing for an empty query", () => {
+        expect(searchRoles("ux").map((r) => r.role)).toContain("UI/UX Designer");
+        expect(searchRoles("  ")).toEqual([]);
+    });
+});

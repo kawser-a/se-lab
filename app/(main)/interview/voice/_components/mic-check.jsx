@@ -40,10 +40,10 @@ const MicCheck = ({ voiceAvailable, onReady, onTypeInstead, resuming }) => {
         return (
             <div className="space-y-4 text-center">
                 <p className="text-sm text-muted-foreground">
-                    This browser can&apos;t take spoken answers here, so you&apos;ll type them instead. The interviewer still reads each question out loud.
+                    This browser can&apos;t take spoken answers, so you&apos;ll type them instead. The interviewer still speaks each question.
                 </p>
                 <Button size="lg" className="h-12 w-full sm:w-auto" onClick={onTypeInstead}>
-                    <Keyboard /> {resuming ? "Resume interview" : "Start interview"}
+                    <Keyboard /> {resuming ? "Rejoin interview" : "Join interview"}
                 </Button>
             </div>
         );
@@ -65,7 +65,7 @@ const MicCheck = ({ voiceAvailable, onReady, onTypeInstead, resuming }) => {
                 </div>
             ) : (
                 <p className="text-sm text-muted-foreground">
-                    You&apos;ll answer out loud, like a real interview. Check your microphone first. Headphones help stop the interviewer&apos;s voice being picked up.
+                    Check your microphone before you join. Headphones help, so the interviewer&apos;s voice isn&apos;t picked up while you answer.
                 </p>
             )}
 
@@ -75,10 +75,10 @@ const MicCheck = ({ voiceAvailable, onReady, onTypeInstead, resuming }) => {
                 </p>
             )}
 
-            <div className="flex flex-col gap-3 sm:flex-row">
+            <div className="flex flex-col gap-3 sm:flex-row lg:flex-col xl:flex-row">
                 {state === "live" ? (
                     <Button size="lg" className="h-12" onClick={() => onReady(stream)}>
-                        {resuming ? "Resume interview" : "Start interview"}
+                        {resuming ? "Rejoin interview" : "Join interview"}
                     </Button>
                 ) : (
                     <Button size="lg" className="h-12" onClick={check} disabled={state === "asking"}>

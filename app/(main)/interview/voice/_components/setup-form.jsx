@@ -8,26 +8,9 @@ import { startVoiceInterview } from "@/actions/voice-interview";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { INTERVIEW_TYPES, LENGTHS, LEVELS } from "@/lib/interview/config";
+import { INTERVIEWERS, INTERVIEW_TYPES, LENGTHS, LEVELS } from "@/lib/interview/config";
 import { cn } from "@/lib/utils";
-
-const ROLE_SUGGESTIONS = [
-    "Software Engineer",
-    "Frontend Developer",
-    "Backend Developer",
-    "Full Stack Developer",
-    "Mobile App Developer",
-    "QA Engineer",
-    "Data Analyst",
-    "Data Scientist",
-    "Machine Learning Engineer",
-    "DevOps Engineer",
-    "Product Manager",
-    "UI/UX Designer",
-    "Business Analyst",
-    "Digital Marketing Executive",
-    "Research Assistant",
-];
+import RolePicker from "./role-picker";
 
 const MAX_FOCUS = 5;
 
@@ -59,12 +42,13 @@ function OptionGroup({ label, name, options, value, onChange, columns = "sm:grid
 
 const SetupForm = ({ defaults }) => {
     const router = useRouter();
-    const [role, setRole] = useState(defaults.role);
+    const [role, setRole] = useState("");
     const [type, setType] = useState("mixed");
     const [level, setLevel] = useState(defaults.level);
     const [questionCount, setQuestionCount] = useState("5");
     const [focus, setFocus] = useState([]);
     const [focusDraft, setFocusDraft] = useState("");
+    const [interviewer, setInterviewer] = useState("hannah");
     const [starting, setStarting] = useState(false);
 
     const addFocus = (topic) => {
@@ -78,7 +62,7 @@ const SetupForm = ({ defaults }) => {
         event.preventDefault();
         setStarting(true);
         try {
-            const result = await startVoiceInterview({ role, type, level, questionCount, focus });
+            const result = await startVoiceInterview({ role, type, level, questionCount, focus, interviewer });
             if (result.error) throw new Error(result.error);
             router.push(`/interview/voice/${result.id}`);
         } catch (error) {
@@ -93,25 +77,19 @@ const SetupForm = ({ defaults }) => {
         <form onSubmit={submit} className="space-y-8 rounded-2xl border bg-card p-5 sm:p-8">
             <div className="space-y-2">
                 <Label htmlFor="role">Role you&apos;re preparing for</Label>
-                <Input
-                    id="role"
-                    value={role}
-                    onChange={(event) => setRole(event.target.value)}
-                    list="role-suggestions"
-                    maxLength={80}
-                    required
-                    placeholder="e.g. Frontend Developer"
-                    className="h-11"
-                />
-                <datalist id="role-suggestions">
-                    {ROLE_SUGGESTIONS.map((suggestion) => (
-                        <option key={suggestion} value={suggestion} />
-                    ))}
-                </datalist>
+                <RolePicker id="role" value={role} onChange={setRole} suggestedRole={defaults.suggestedRole} />
             </div>
 
             <OptionGroup label="Interview type" name="type" options={INTERVIEW_TYPES} value={type} onChange={setType} />
             <OptionGroup label="Level" name="level" options={LEVELS} value={level} onChange={setLevel} />
+            <OptionGroup
+                label="Your interviewer"
+                name="interviewer"
+                options={Object.fromEntries(Object.entries(INTERVIEWERS).map(([id, person]) => [id, { label: person.name, description: person.description }]))}
+                value={interviewer}
+                onChange={setInterviewer}
+                columns="grid-cols-2"
+            />
             <OptionGroup label="Length" name="length" options={Object.fromEntries(Object.entries(LENGTHS).map(([count, option]) => [count, { label: `${option.label}, ${count} questions`, minutes: option.minutes }]))} value={questionCount} onChange={setQuestionCount} />
 
             <div className="space-y-2">
