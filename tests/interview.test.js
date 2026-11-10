@@ -54,6 +54,22 @@ describe("normalizePlan", () => {
     it("rejects a malformed plan", () => {
         expect(() => normalizePlan({ questions: [{ text: "hi" }] }, config)).toThrow(InvalidPlanError);
     });
+
+    it("accepts the loose shapes models really return", () => {
+        const loose = [
+            { kind: "Behavioural", topic: "Conflict", text: "Tell me about a disagreement with a teammate.", lookFor: ["situation", "action", "result", "lesson", "reflection", "extra"] },
+            { kind: "TECHNICAL", text: "Explain how you would cache an expensive API call.", lookFor: "not a list" },
+        ];
+        const result = normalizePlan(loose, config);
+        expect(result.questions.map((q) => q.kind)).toEqual(["behavioral", "technical"]);
+        expect(result.questions[0].lookFor).toHaveLength(5);
+        expect(result.questions[1]).toMatchObject({ topic: "General", lookFor: ["not a list"] });
+    });
+
+    it("skips one broken question when there are enough good ones", () => {
+        const result = normalizePlan({ questions: [{ text: "?" }, question, question] }, config);
+        expect(result.questions).toHaveLength(2);
+    });
 });
 
 describe("nextStep", () => {
@@ -181,6 +197,16 @@ describe("scoring", () => {
         const feedback = buildFeedback(plan, turns, parseEvaluation({ summary: "Ended early.", questions: [{ questionId: "q1", scores: ratings(3) }] }));
         expect(feedback.questions).toHaveLength(1);
         expect(feedback.score).toBe(50);
+    });
+
+    it("pulls out-of-range ratings into 1 to 5 and trims long text", () => {
+        const evaluation = parseEvaluation({
+            summary: "x".repeat(900),
+            questions: [{ questionId: "q1", scores: { relevance: 0, depth: 4.6, structure: "3", communication: 7 }, strengths: ["a", "b", "c", "d"] }],
+        });
+        expect(evaluation.questions[0].scores).toEqual({ relevance: 1, depth: 5, structure: 3, communication: 5 });
+        expect(evaluation.questions[0].strengths).toHaveLength(3);
+        expect(evaluation.summary.length).toBeLessThanOrEqual(800);
     });
 
     it("rejects malformed feedback", () => {
