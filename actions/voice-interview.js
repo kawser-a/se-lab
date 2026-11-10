@@ -4,6 +4,7 @@ import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/prisma";
 import { AIUnavailableError, generateJSON } from "@/lib/ai";
+import { isSpeechConfigured } from "@/lib/ai/speech";
 import { isTranscriptionConfigured } from "@/lib/ai/transcribe";
 import { answerInputSchema, dailyLimit, interviewConfigSchema } from "@/lib/interview/config";
 import {
@@ -17,6 +18,7 @@ import {
 } from "@/lib/interview/engine";
 import { answerMetrics } from "@/lib/interview/metrics";
 import { buildPlanPrompt, normalizePlan } from "@/lib/interview/plan";
+import { closingLine, firstName, interviewerFor, leadIn, openingLine, resumeLine } from "@/lib/interview/script";
 import { buildEvaluationPrompt, buildFeedback, parseEvaluation } from "@/lib/interview/scoring";
 
 // Actions return { error } for anything the user can act on, rather than
@@ -40,16 +42,29 @@ async function getOwnInterview(userId, id) {
     return interview;
 }
 
-// What the browser gets to see. The plan's scoring notes stay on the server.
-function toView(interview) {
+// What the browser gets to see, including what the interviewer says next.
+// The plan's scoring notes stay on the server.
+function toView(interview, user) {
     const { plan, turns } = interview;
+    const step = nextStep(plan, turns);
+    const interviewer = interviewerFor(plan);
+    const candidate = firstName(user.name);
+    const lines = { interviewer: interviewer.name, candidate, role: interview.role, type: interview.type, total: plan.questions.length };
+
     return {
         id: interview.id,
         role: interview.role,
         type: interview.type,
         level: interview.level,
         status: interview.status,
-        step: nextStep(plan, turns),
+        interviewer,
+        candidate: { name: candidate, imageUrl: user.imageUrl ?? null },
+        script: {
+            opening: openingLine(lines),
+            resume: resumeLine(lines),
+            closing: closingLine(lines),
+        },
+        step: step.type === "question" ? { ...step, lead: leadIn(step, turns) } : step,
         turnIndex: turns.length,
         turns: turns.map(({ questionId, kind, prompt, answer, skipped }) => ({ questionId, kind, prompt, answer, skipped })),
         answered: answeredCount(turns),
@@ -81,7 +96,7 @@ async function generateValidated(prompt, parse, options) {
 }
 
 export async function getVoiceCapabilities() {
-    return { serverTranscription: isTranscriptionConfigured() };
+    return { serverTranscription: isTranscriptionConfigured(), serverVoice: isSpeechConfigured() };
 }
 
 // Sensible starting values for the setup form, from the user's profile and
@@ -96,7 +111,8 @@ export async function getVoiceSetupDefaults() {
 
     const experience = user.experience ?? 0;
     return {
-        role: resume?.data?.basics?.headline?.slice(0, 80) ?? "",
+        // Offered first in the role list, not filled in for them.
+        suggestedRole: resume?.data?.basics?.headline?.slice(0, 80) || null,
         level: experience < 2 ? "entry" : experience <= 5 ? "mid" : "senior",
         skills: (user.skills ?? []).slice(0, 10),
     };
@@ -126,7 +142,15 @@ export async function startVoiceInterview(input) {
     }
 
     const interview = await db.voiceInterview.create({
-        data: { userId: user.id, role: config.role, type: config.type, level: config.level, focus: config.focus, plan, turns: [] },
+        data: {
+            userId: user.id,
+            role: config.role,
+            type: config.type,
+            level: config.level,
+            focus: config.focus,
+            plan: { ...plan, interviewer: config.interviewer },
+            turns: [],
+        },
         select: { id: true },
     });
 
@@ -137,7 +161,7 @@ export async function startVoiceInterview(input) {
 export async function getVoiceInterview(id) {
     const user = await getCurrentUser();
     const interview = await db.voiceInterview.findFirst({ where: { id, userId: user.id } });
-    return interview ? toView(interview) : null;
+    return interview ? toView(interview, user) : null;
 }
 
 export async function submitVoiceAnswer(id, input) {
@@ -148,24 +172,24 @@ export async function submitVoiceAnswer(id, input) {
     const answer = parsed.data;
 
     const interview = await getOwnInterview(user.id, id);
-    if (interview.status !== "IN_PROGRESS") return { error: "This interview has already finished.", view: toView(interview) };
+    if (interview.status !== "IN_PROGRESS") return { error: "This interview has already finished.", view: toView(interview, user) };
 
     const turns = interview.turns;
     const placement = classifyAnswer(turns, answer);
-    if (placement === "duplicate") return { view: toView(interview) };
-    if (placement === "stale") return { view: toView(interview), notice: "This interview moved on in another tab, so it's been brought up to date." };
+    if (placement === "duplicate") return { view: toView(interview, user) };
+    if (placement === "stale") return { view: toView(interview, user), notice: "This interview moved on in another tab, so it's been brought up to date." };
 
     const step = nextStep(interview.plan, turns);
-    if (step.type === "complete") return { view: toView(interview) };
+    if (step.type === "complete") return { view: toView(interview, user) };
 
     if (!answer.skipped && !answer.answer) return { error: "Say or type an answer first, or skip the question." };
 
-    let followUp = null;
+    let reply = { followUp: null, ack: null };
     if (shouldConsiderFollowUp(step, answer)) {
         const question = interview.plan.questions.find((q) => q.id === step.questionId);
         try {
             // A slow follow-up isn't worth the wait. Without one, the interview just moves on.
-            followUp = parseFollowUp(
+            reply = parseFollowUp(
                 await withinTime(
                     generateJSON(buildFollowUpPrompt(interview, question, answer.answer), {
                         speed: "fast",
@@ -180,7 +204,7 @@ export async function submitVoiceAnswer(id, input) {
         }
     }
 
-    const nextTurns = [...turns, buildTurn(step, answer, followUp)];
+    const nextTurns = [...turns, buildTurn(step, answer, reply)];
 
     // Only save if nobody else has changed the interview since it was read.
     const { count } = await db.voiceInterview.updateMany({
@@ -190,10 +214,10 @@ export async function submitVoiceAnswer(id, input) {
 
     if (count === 0) {
         const latest = await getOwnInterview(user.id, id);
-        return { view: toView(latest), notice: "This interview moved on in another tab, so it's been brought up to date." };
+        return { view: toView(latest, user), notice: "This interview moved on in another tab, so it's been brought up to date." };
     }
 
-    return { view: toView({ ...interview, turns: nextTurns }) };
+    return { view: toView({ ...interview, turns: nextTurns }, user) };
 }
 
 async function writeFeedback(interview) {

@@ -36,6 +36,10 @@ AI_PROVIDER_ORDER=""
 VOICE_INTERVIEW_DAILY_LIMIT=""
 # Optional. Whisper model for browsers without built-in speech recognition.
 GROQ_TRANSCRIPTION_MODEL="whisper-large-v3-turbo"
+# Optional. Natural voice for the interviewer (Groq Orpheus). Set
+# INTERVIEW_VOICE="browser" to always use the browser's own voice instead.
+GROQ_SPEECH_MODEL="canopylabs/orpheus-v1-english"
+INTERVIEW_VOICE=""
 # The public URL of the site, used in blog share links.
 NEXT_PUBLIC_SITE_URL="http://localhost:3000"
 # Optional. SMTP account for newsletter sign-ups; the form shows an error without it.

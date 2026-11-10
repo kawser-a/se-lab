@@ -3,6 +3,7 @@ import { answerInputSchema, interviewConfigSchema } from "@/lib/interview/config
 import { buildTurn, classifyAnswer, nextStep, parseFollowUp, shouldConsiderFollowUp } from "@/lib/interview/engine";
 import { answerMetrics, countWords, findFillers, paceLabel } from "@/lib/interview/metrics";
 import { InvalidPlanError, normalizePlan } from "@/lib/interview/plan";
+import { closingLine, interviewerFor, leadIn, openingLine } from "@/lib/interview/script";
 import { splitForSpeech } from "@/lib/interview/speech";
 import { buildFeedback, parseEvaluation, scoreFromRatings } from "@/lib/interview/scoring";
 
@@ -17,13 +18,13 @@ const voice = (answer, durationMs = 60000) => ({ answer, inputMode: "voice", dur
 
 function answer(turns, input, followUp = null) {
     const step = nextStep(plan, turns);
-    return [...turns, buildTurn(step, input, followUp)];
+    return [...turns, buildTurn(step, input, { followUp })];
 }
 
 describe("interview config", () => {
     it("accepts a normal setup and fills defaults", () => {
         const parsed = interviewConfigSchema.parse({ role: " Frontend Developer ", type: "mixed", level: "entry", questionCount: "5" });
-        expect(parsed).toEqual({ role: "Frontend Developer", type: "mixed", level: "entry", questionCount: 5, focus: [] });
+        expect(parsed).toEqual({ role: "Frontend Developer", type: "mixed", level: "entry", questionCount: 5, focus: [], interviewer: "hannah" });
     });
 
     it("rejects lengths that aren't offered", () => {
@@ -104,11 +105,17 @@ describe("follow-ups", () => {
         expect(shouldConsiderFollowUp(step, { ...voice("long enough answer here with many words in it"), skipped: true })).toBe(false);
     });
 
+    it("reads the follow-up and the acknowledgment", () => {
+        expect(parseFollowUp({ acknowledgment: " Interesting that you  chose context. ", followUp: "  How did   you measure that? " })).toEqual({
+            ack: "Interesting that you chose context.",
+            followUp: "How did you measure that?",
+        });
+        expect(parseFollowUp({ followUp: null })).toEqual({ followUp: null, ack: null });
+    });
+
     it("treats anything malformed as no follow-up", () => {
-        expect(parseFollowUp({ followUp: "  How did   you measure that? " })).toBe("How did you measure that?");
-        expect(parseFollowUp({ followUp: null })).toBeNull();
-        expect(parseFollowUp({ question: "Why?" })).toBeNull();
-        expect(parseFollowUp("not json")).toBeNull();
+        expect(parseFollowUp({ question: "Why?" })).toEqual({ followUp: null, ack: null });
+        expect(parseFollowUp("not json")).toEqual({ followUp: null, ack: null });
     });
 });
 
@@ -192,4 +199,38 @@ describe("splitForSpeech", () => {
         expect(chunks.every((chunk) => chunk.length <= 120)).toBe(true);
         expect(chunks.join(" ")).toBe(sentence.repeat(8).trim());
     });
+
+    it("breaks a single long sentence at commas, then between words", () => {
+        const long = "When the team disagreed, I wrote down both options, built a small prototype of each, measured them on a slow phone, and shared the numbers before we decided anything at all together";
+        const chunks = splitForSpeech(long, 60);
+        expect(chunks.every((chunk) => chunk.length <= 60)).toBe(true);
+        expect(chunks[0]).toBe("When the team disagreed, I wrote down both options,");
+        expect(chunks.join(" ")).toBe(long);
+    });
 });
+
+describe("conversation script", () => {
+    const step = (number, kind = "main") => ({ type: "question", kind, number, total: 3 });
+    const turn = (extra = {}) => ({ answer: "x", skipped: false, ...extra });
+
+    it("opens and closes by name", () => {
+        expect(openingLine({ interviewer: "Hannah", candidate: "Kawser", role: "QA Engineer", type: "technical", total: 5 })).toMatch(
+            /^Hi Kawser, I'm Hannah\. .*technical interview for the QA Engineer role\. I've got 5 questions/
+        );
+        expect(openingLine({ interviewer: "Daniel", candidate: "", role: "QA", type: "mixed", total: 3 })).toMatch(/^Hi, I'm Daniel\. .* an interview for/);
+        expect(closingLine({ candidate: "Kawser" })).toMatch(/Thanks, Kawser/);
+    });
+
+    it("leads into each question naturally", () => {
+        expect(leadIn(step(1), [])).toBe("Let's start with this one.");
+        expect(leadIn(step(1, "follow-up"), [turn({ ack: "Interesting that you chose context." })])).toBe("Interesting that you chose context.");
+        expect(leadIn(step(3), [turn(), turn()])).toMatch(/Last question\.$/);
+        expect(leadIn(step(2), [turn({ skipped: true })])).toMatch(/^No problem\./);
+    });
+
+    it("falls back to the default interviewer", () => {
+        expect(interviewerFor({ questions: [] }).name).toBe("Hannah");
+        expect(interviewerFor({ interviewer: "daniel" }).voice).toBe("daniel");
+    });
+});
+
