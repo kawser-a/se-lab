@@ -37,6 +37,7 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import StagedProgress from "@/components/staged-progress";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
@@ -174,6 +175,54 @@ function TranscriptPanel({ log, live, className }) {
                     </div>
                 )}
             </div>
+        </div>
+    );
+}
+
+// One line under the stage that always says whose turn it is and what
+// happens next. It swaps with a short fade so changes are noticed but
+// never jumpy.
+function TurnStatus({ turn, name, level, wrapShare }) {
+    const lines = {
+        interviewer: { text: `${name} is speaking`, tone: "text-[#C9F300]" },
+        replying: { text: `${name} is replying`, tone: "text-[#C9F300]", dots: true },
+        yours: { text: "Your turn. Answer out loud when you're ready.", tone: "text-sky-300", mic: true },
+        talking: { text: "Listening. Just pause when you've finished.", tone: "text-sky-300", mic: true },
+        finishing: { text: "Finishing your answer. Keep talking to add more.", tone: "text-sky-300", bar: true },
+        typing: { text: "Your turn. Type your answer below.", tone: "text-sky-300" },
+        paused: { text: "Paused. Press Resume or Space when you're ready.", tone: "text-amber-300" },
+    };
+    const line = lines[turn];
+
+    return (
+        <div className="flex min-h-9 items-center justify-center" aria-live="polite">
+            <AnimatePresence mode="wait" initial={false}>
+                {line && (
+                    <motion.div
+                        key={turn}
+                        initial={{ opacity: 0, y: 4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -4 }}
+                        transition={{ duration: 0.15 }}
+                        className="relative flex items-center gap-2 overflow-hidden rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 text-sm"
+                    >
+                        {line.mic && (
+                            <span className="relative flex size-4 items-center justify-center" aria-hidden="true">
+                                <span className="absolute inset-0 rounded-full bg-sky-300/30 transition-transform duration-100" style={{ transform: `scale(${1 + Math.min(level, 1) * 1.2})` }} />
+                                <Mic className="relative size-3.5 text-sky-300" />
+                            </span>
+                        )}
+                        {turn === "interviewer" && <span className="size-2 rounded-full bg-[#9EFF00] motion-safe:animate-pulse" aria-hidden="true" />}
+                        <span className={line.tone}>{line.text}</span>
+                        {line.dots && <TypingDots />}
+                        {line.bar && (
+                            <span className="absolute inset-x-0 bottom-0 h-0.5 bg-white/10" aria-hidden="true">
+                                <span className="block h-full bg-sky-300 transition-[width] duration-150" style={{ width: `${Math.max(0, wrapShare) * 100}%` }} />
+                            </span>
+                        )}
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
@@ -317,6 +366,7 @@ const InterviewSession = ({ initialView, capabilities }) => {
         return id;
     }, []);
     const updateLog = useCallback((id, patch) => setLog((current) => current.map((entry) => (entry.id === id ? { ...entry, ...patch } : entry))), []);
+    const removeLog = useCallback((id) => setLog((current) => current.filter((entry) => entry.id !== id)), []);
 
     // Returns the mode it switched to, so the message can say what happens next.
     const onModeFailed = useCallback(() => {
@@ -404,7 +454,7 @@ const InterviewSession = ({ initialView, capabilities }) => {
     }, [router]);
 
     const submit = useCallback(
-        async ({ text = "", durationMs = 0, inputMode, skipped = false }, { acknowledge = false } = {}) => {
+        async ({ text = "", durationMs = 0, inputMode, skipped = false }, { acknowledge = false, ack = null } = {}) => {
             setPhase("waiting");
             setProblem(null);
             const current = viewRef.current;
@@ -421,7 +471,7 @@ const InterviewSession = ({ initialView, capabilities }) => {
             // reply is worked out. A long wait gets a word too.
             let settled = false;
             const spoken = [];
-            if (acknowledge) spoken.push(say(friendly(BACKCHANNELS[current.turnIndex % BACKCHANNELS.length]), { record: false }));
+            if (acknowledge) spoken.push(ack ?? say(friendly(BACKCHANNELS[current.turnIndex % BACKCHANNELS.length]), { record: false }));
             const hold = setTimeout(() => {
                 if (!settled) spoken.push(say(friendly(HOLD_LINE), { record: false }));
             }, HOLD_AFTER_MS);
@@ -470,13 +520,35 @@ const InterviewSession = ({ initialView, capabilities }) => {
         [ask, finish, linesFor, router, say]
     );
 
+    // The moment an answer is judged finished: the interviewer says "okay"
+    // right away and the answer moves into the transcript, while the last
+    // words are confirmed and the reply is worked out.
+    const answerRef = useRef(null);
+    const ending = useRef(null);
+    const onAnswerEnding = useCallback(() => {
+        setPhase("waiting");
+        const live = answerRef.current;
+        const words = `${live?.text ?? ""} ${live?.interim ?? ""}`.trim();
+        const logId = words ? addLog({ who: "you", text: words }) : null;
+        const ack = say(friendly(BACKCHANNELS[viewRef.current.turnIndex % BACKCHANNELS.length]), { record: false });
+        ending.current = { ack, logId };
+    }, [addLog, say]);
+
     const onAnswerDone = useCallback(
         async ({ text, durationMs, reason }) => {
-            if (reason === "switched" || reason === "error") return;
+            const early = ending.current;
+            ending.current = null;
+            if (reason === "switched" || reason === "error") {
+                if (early?.logId) removeLog(early.logId);
+                return;
+            }
 
             if (!text.trim()) {
+                if (early?.logId) removeLog(early.logId);
+                await early?.ack;
                 misses.current += 1;
                 if (misses.current >= MAX_MISSES) {
+                    setPhase("answering");
                     setAutoListen(false);
                     setProblem({ message: "I'm having trouble hearing you. Check your microphone, or type your answer instead." });
                     return;
@@ -487,10 +559,11 @@ const InterviewSession = ({ initialView, capabilities }) => {
                 return;
             }
 
-            addLog({ who: "you", text: text.trim() });
-            await submit({ text, durationMs, inputMode: "voice" }, { acknowledge: true });
+            if (early?.logId) updateLog(early.logId, { text: text.trim() });
+            else addLog({ who: "you", text: text.trim() });
+            await submit({ text, durationMs, inputMode: "voice" }, { acknowledge: true, ack: early?.ack });
         },
-        [addLog, say, submit]
+        [addLog, updateLog, removeLog, say, submit]
     );
 
     const step = view.step;
@@ -499,8 +572,10 @@ const InterviewSession = ({ initialView, capabilities }) => {
         stream,
         context: step.type === "question" ? `Job interview for a ${view.role} role. Question: ${step.prompt}` : undefined,
         onModeFailed,
+        onEnding: onAnswerEnding,
         onDone: onAnswerDone,
     });
+    answerRef.current = answer;
     const { start: startListening, cancel: cancelListening } = answer;
 
     // The candidate's turn starts as soon as the interviewer stops talking.
@@ -638,7 +713,9 @@ const InterviewSession = ({ initialView, capabilities }) => {
     // ---- What's on screen ---------------------------------------------------
 
     const inCall = phase !== "lobby";
-    const listening = answer.status === "listening" || answer.status === "wrapping" || answer.status === "paused";
+    // Once an answer is judged finished it's the interviewer's turn, even in
+    // the moment it takes the browser to confirm the last words.
+    const listening = phase !== "waiting" && (answer.status === "listening" || answer.status === "wrapping" || answer.status === "paused");
     const wrapping = answer.status === "wrapping";
     const yourWords = { text: answer.text, interim: answer.interim };
     const saying = talking && voiceOn;
@@ -664,21 +741,16 @@ const InterviewSession = ({ initialView, capabilities }) => {
         }
     }
 
-    const status = paused
-        ? "Paused. Press resume, or Space, when you're ready."
-        : phase === "closing"
-          ? null
-          : saying
-            ? `${view.interviewer.name} is speaking`
-            : wrapping
-              ? "Wrapping up your answer. Keep talking if you're not finished."
-              : listening
-                ? yourWords.text || yourWords.interim
-                    ? "Listening. Pause naturally when you're done."
-                    : "Your turn. Take a moment, then answer out loud."
-                : phase === "answering" && mode === "typed"
-                  ? "Your turn. Type your answer below."
-                  : null;
+    // Whose turn it is, worked out in one place so the status line, the
+    // tiles and the controls always agree.
+    let turn = null;
+    if (paused) turn = "paused";
+    else if (phase === "closing") turn = null;
+    else if (saying) turn = "interviewer";
+    else if (phase === "waiting" || answer.status === "transcribing") turn = "replying";
+    else if (phase === "answering" && mode === "typed") turn = "typing";
+    else if (wrapping) turn = "finishing";
+    else if (listening) turn = yourWords.text || yourWords.interim ? "talking" : "yours";
 
     const busy = phase === "waiting" || phase === "closing";
     const elapsed = startedAt ? now - startedAt - pausedFor - (paused && pausedAt.current ? now - pausedAt.current : 0) : 0;
@@ -748,7 +820,13 @@ const InterviewSession = ({ initialView, capabilities }) => {
                                 wrapProgress={wrapping ? 1 - answer.wrapLeft / answer.wrapTotal : 0}
                             />
                         )}
-                        {captions && !paused && <Subtitle line={subtitle} />}
+                        {/* With the transcript open on a wide screen, the words show there
+                            instead, so they're never shown twice. */}
+                        {!paused && (captions || !showTranscript) && (
+                            <div className={cn(showTranscript && "lg:hidden", !captions && "max-lg:hidden")}>
+                                <Subtitle line={subtitle} />
+                            </div>
+                        )}
 
                         <AnimatePresence>
                             {paused && (
@@ -769,12 +847,14 @@ const InterviewSession = ({ initialView, capabilities }) => {
                                 <motion.div
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
-                                    className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/70 backdrop-blur-sm"
-                                    role="status"
+                                    className="absolute inset-0 flex flex-col items-center justify-center bg-black/75 backdrop-blur-sm"
                                 >
-                                    <Loader2 className="size-7 animate-spin text-[#9EFF00]" />
-                                    <p className="text-lg font-semibold">Putting your feedback together</p>
-                                    <p className="text-sm text-muted-foreground">This usually takes a few seconds.</p>
+                                    <StagedProgress
+                                        title="Putting your feedback together"
+                                        steps={["Reading your answers", "Rating understanding, depth and communication", "Writing tips for each question"]}
+                                        expectedMs={7000}
+                                        className="px-6"
+                                    />
                                 </motion.div>
                             )}
                         </AnimatePresence>
@@ -830,10 +910,7 @@ const InterviewSession = ({ initialView, capabilities }) => {
             <AnimatePresence>
                 {inCall && (
                     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.1 }} className="space-y-3">
-                        <p className="flex min-h-6 items-center justify-center gap-2 text-center text-sm text-muted-foreground" aria-live="polite">
-                            {answer.status === "transcribing" && <Loader2 className="size-4 animate-spin" />}
-                            {status}
-                        </p>
+                        <TurnStatus turn={turn} name={view.interviewer.name} level={answer.level} wrapShare={wrapping ? answer.wrapLeft / answer.wrapTotal : 0} />
 
                         {problem && (
                             <div role="alert" className="mx-auto flex max-w-2xl flex-col gap-3 rounded-xl border border-amber-400/30 bg-amber-400/5 p-4 text-sm sm:flex-row sm:items-center">
@@ -903,9 +980,11 @@ const InterviewSession = ({ initialView, capabilities }) => {
                         {/* Controls */}
                         <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#121212]/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur sm:static sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
                             <div className="mx-auto flex max-w-xl items-start justify-center gap-3 sm:gap-4">
-                                <ControlButton label={captions ? "Hide subtitles" : "Show subtitles"} caption="Subtitles" active={captions} aria-pressed={captions} onClick={toggleCaptions}>
-                                    {captions ? <Captions /> : <CaptionsOff />}
-                                </ControlButton>
+                                <div className={cn(showTranscript && "lg:hidden")}>
+                                    <ControlButton label={captions ? "Hide subtitles" : "Show subtitles"} caption="Subtitles" active={captions} aria-pressed={captions} onClick={toggleCaptions}>
+                                        {captions ? <Captions /> : <CaptionsOff />}
+                                    </ControlButton>
+                                </div>
                                 <div className="hidden lg:block">
                                     <ControlButton
                                         label={showTranscript ? "Hide transcript" : "Show transcript"}

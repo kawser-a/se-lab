@@ -9,9 +9,9 @@ import { createLevelMeter, createRecognizer, createRecorder, RECOGNITION_ERRORS 
 //   countdown of WRAP_MS, and speaking again cancels it
 // - early in an answer people stop to think more, so a short answer so far
 //   gets EARLY_EXTRA_MS on top before the wrap-up starts
-const PAUSE_MS = 2200;
-const WRAP_MS = 2000;
-const EARLY_EXTRA_MS = 2000;
+const PAUSE_MS = 1500;
+const WRAP_MS = 1300;
+const EARLY_EXTRA_MS = 1500;
 const EARLY_WORDS = 12;
 const MAX_ANSWER_MS = 3 * 60 * 1000;
 const SPEAKING_LEVEL = 0.12;
@@ -21,8 +21,10 @@ const wordsIn = (text) => text.split(/\s+/).filter(Boolean).length;
 // Captures one spoken answer.
 //   mode "browser": the browser transcribes live (Chrome, Edge, Safari)
 //   mode "record":  record, then transcribe with Whisper on the server
-// When the answer ends, `onDone({ text, durationMs })` is called.
-export function useAnswer({ mode, stream, context, onModeFailed, onDone }) {
+// The moment the answer is judged finished, `onEnding()` is called (so the
+// interviewer can react straight away), then `onDone({ text, durationMs })`
+// once the words are in.
+export function useAnswer({ mode, stream, context, onModeFailed, onEnding, onDone }) {
     const [status, setStatus] = useState("idle"); // idle | listening | wrapping | paused | transcribing
     const [text, setText] = useState("");
     const [interim, setInterim] = useState("");
@@ -34,6 +36,8 @@ export function useAnswer({ mode, stream, context, onModeFailed, onDone }) {
     const session = useRef(null);
     const doneRef = useRef(onDone);
     doneRef.current = onDone;
+    const endingRef = useRef(onEnding);
+    endingRef.current = onEnding;
 
     useEffect(() => {
         if (!stream) return;
@@ -59,6 +63,11 @@ export function useAnswer({ mode, stream, context, onModeFailed, onDone }) {
 
             // Time from first word to last, so pauses at either end don't skew pace.
             const durationMs = current.firstSpeech ? Math.max(0, current.lastSpeech - current.firstSpeech) : 0;
+
+            // Something was said, so the turn is over: let the interviewer respond
+            // now instead of after the last words have been confirmed.
+            const saidSomething = current.kind === "browser" ? current.words > 0 : current.heardSound;
+            if (reason !== "cancel" && saidSomething) endingRef.current?.();
 
             if (current.kind === "browser") {
                 const final = await current.recognizer.stop();

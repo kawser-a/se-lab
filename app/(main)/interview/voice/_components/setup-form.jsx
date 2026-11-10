@@ -161,9 +161,17 @@ const SetupForm = ({ defaults }) => {
 
     const submit = async (event) => {
         event.preventDefault();
+        if (starting) return;
         setStarting(true);
+        // A topic typed but not added yet still counts; nobody expects it to vanish.
+        const pending = focusDraft.trim().slice(0, 40);
+        const topics = pending && focus.length < MAX_FOCUS && !focus.some((item) => item.toLowerCase() === pending.toLowerCase()) ? [...focus, pending] : focus;
+        if (topics !== focus) {
+            setFocus(topics);
+            setFocusDraft("");
+        }
         try {
-            const result = await startVoiceInterview({ role, type, level, questionCount, focus, interviewer });
+            const result = await startVoiceInterview({ role, type, level, questionCount, focus: topics, interviewer });
             if (result.error) throw new Error(result.error);
             router.push(`/interview/voice/${result.id}`);
         } catch (error) {
@@ -173,7 +181,7 @@ const SetupForm = ({ defaults }) => {
     };
 
     const suggestions = defaults.skills.filter((skill) => !focus.includes(skill));
-    const canStart = role.trim().length >= 2 && !starting;
+    const hasRole = role.trim().length >= 2;
 
     return (
         <form onSubmit={submit} className="space-y-8">
@@ -259,15 +267,16 @@ const SetupForm = ({ defaults }) => {
             <div className="flex flex-col items-center gap-3 text-center">
                 <button
                     type="submit"
-                    disabled={!canStart}
-                    className="group inline-flex h-14 w-full max-w-xs items-center justify-center gap-2 rounded-full bg-[#9EFF00] px-8 text-base font-semibold text-black shadow-[0_0_40px_-12px_#9EFF00] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#b4ff33] hover:shadow-[0_0_50px_-8px_#9EFF00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9EFF00] focus-visible:ring-offset-2 focus-visible:ring-offset-[#121212] active:translate-y-0 active:scale-[0.97] disabled:pointer-events-none disabled:bg-white/10 disabled:text-white/40 disabled:shadow-none"
+                    disabled={!hasRole}
+                    aria-busy={starting}
+                    className="group inline-flex h-14 w-full max-w-xs items-center justify-center gap-2 rounded-full bg-[#9EFF00] px-8 text-base font-semibold text-black shadow-[0_0_40px_-12px_#9EFF00] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#b4ff33] hover:shadow-[0_0_50px_-8px_#9EFF00] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9EFF00] focus-visible:ring-offset-2 focus-visible:ring-offset-[#121212] active:translate-y-0 active:scale-[0.97] disabled:pointer-events-none disabled:bg-white/10 disabled:text-white/40 disabled:shadow-none aria-busy:pointer-events-none aria-busy:translate-y-0"
                 >
                     {starting ? <Loader2 className="size-5 animate-spin" /> : null}
-                    {starting ? "Setting up your interview" : "Start interview"}
+                    {starting ? "Setting up your interview…" : "Start interview"}
                     {!starting && <ArrowRight className="size-5 transition-transform duration-200 group-hover:translate-x-1" />}
                 </button>
                 <p className="text-sm text-muted-foreground">
-                    {role.trim().length < 2 ? "Choose a role above to start." : "Works best in Chrome, Edge or Safari, in a quiet room."}
+                    {!hasRole ? "Choose a role above to start." : "Works best in Chrome, Edge or Safari, in a quiet room."}
                 </p>
             </div>
         </form>

@@ -2,6 +2,7 @@
 
 import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { db } from "@/lib/prisma";
 import { AIUnavailableError, generateJSON } from "@/lib/ai";
 import { isSpeechConfigured } from "@/lib/ai/speech";
@@ -97,6 +98,19 @@ function withinTime(promise, ms) {
     return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
+// Work that's already under way for an interview, so a second request for
+// the same thing waits for it instead of paying for it again. Per server
+// process; if a request lands elsewhere it simply does the work itself.
+const inFlight = new Map();
+
+function once(key, work) {
+    if (!inFlight.has(key)) {
+        const promise = work().finally(() => inFlight.delete(key));
+        inFlight.set(key, promise);
+    }
+    return inFlight.get(key);
+}
+
 // Models occasionally return JSON that doesn't match. One more try usually fixes it.
 async function generateValidated(prompt, parse, options) {
     for (let attempt = 0; ; attempt++) {
@@ -160,16 +174,19 @@ export async function startVoiceInterview(input) {
         select: { id: true },
     });
 
+    // Start writing the questions now rather than when the lobby loads, so
+    // they're usually ready by the time the microphone is checked.
+    after(() => once(`plan:${interview.id}`, () => writePlan(user, interview.id)).catch(() => {}));
+
     revalidatePath("/interview");
     return { id: interview.id };
 }
 
-// Writes the questions for an interview that doesn't have them yet. Safe to
-// call more than once: whichever finishes first is kept.
-export async function prepareVoiceInterview(id) {
-    const user = await getCurrentUser();
+// Writes the questions for an interview that doesn't have them yet and
+// returns the interview as saved. Whichever write finishes first is kept.
+async function writePlan(user, id) {
     const interview = await getOwnInterview(user.id, id);
-    if (interview.plan.questions.length > 0) return { view: toView(interview, user) };
+    if (interview.plan.questions.length > 0) return interview;
 
     const config = {
         role: interview.role,
@@ -179,28 +196,33 @@ export async function prepareVoiceInterview(id) {
         questionCount: interview.plan.questionCount,
     };
 
-    let questions;
-    try {
-        ({ questions } = await generateValidated(buildPlanPrompt(config, user), (raw) => normalizePlan(raw, config), {
-            speed: "fast",
-            schema: PLAN_JSON_SCHEMA,
-            // Roughly 150 tokens a question, with room to spare.
-            maxTokens: 400 + config.questionCount * 220,
-            timeoutMs: 20000,
-        }));
-    } catch (error) {
-        console.error("Couldn't plan the interview:", error.message);
-        return { error: error instanceof AIUnavailableError ? BUSY : "Couldn't prepare your questions this time. Please try again." };
-    }
+    const { questions } = await generateValidated(buildPlanPrompt(config, user), (raw) => normalizePlan(raw, config), {
+        speed: "fast",
+        schema: PLAN_JSON_SCHEMA,
+        // Roughly 150 tokens a question, with room to spare.
+        maxTokens: 400 + config.questionCount * 220,
+        timeoutMs: 20000,
+    });
 
     const plan = { ...interview.plan, questions };
     const { count } = await db.voiceInterview.updateMany({
         where: { id, userId: user.id, updatedAt: interview.updatedAt },
         data: { plan },
     });
+    return count === 0 ? getOwnInterview(user.id, id) : { ...interview, plan };
+}
 
-    const latest = count === 0 ? await getOwnInterview(user.id, id) : { ...interview, plan };
-    return { view: toView(latest, user) };
+// Called from the lobby. Joins the preparation started with the interview
+// if it's still running, or starts it if it never did (or failed).
+export async function prepareVoiceInterview(id) {
+    const user = await getCurrentUser();
+    try {
+        const interview = await once(`plan:${id}`, () => writePlan(user, id));
+        return { view: toView(interview, user) };
+    } catch (error) {
+        console.error("Couldn't plan the interview:", error.message);
+        return { error: error instanceof AIUnavailableError ? BUSY : "Couldn't prepare your questions this time. Please try again." };
+    }
 }
 
 export async function getVoiceInterview(id) {
@@ -240,12 +262,12 @@ export async function submitVoiceAnswer(id, input) {
             reply = parseFollowUp(
                 await withinTime(
                     generateJSON(buildFollowUpPrompt(interview, question, answer.answer, asking), {
-                        speed: "fast",
+                        speed: "instant",
                         schema: FOLLOW_UP_JSON_SCHEMA,
                         maxTokens: 200,
-                        timeoutMs: 6000,
+                        timeoutMs: 4000,
                     }),
-                    7000
+                    5000
                 )
             );
         } catch (error) {
@@ -266,7 +288,14 @@ export async function submitVoiceAnswer(id, input) {
         return { view: toView(latest, user), notice: "This interview moved on in another tab, so it's been brought up to date." };
     }
 
-    return { view: toView({ ...interview, turns: nextTurns }, user) };
+    const saved = { ...interview, turns: nextTurns };
+    // That was the last answer. Start on the feedback while the interviewer
+    // says goodbye, so it's often ready by the time they finish.
+    if (nextStep(interview.plan, nextTurns).type === "complete") {
+        after(() => once(`feedback:${id}`, () => writeFeedback(saved)).catch(() => {}));
+    }
+
+    return { view: toView(saved, user) };
 }
 
 async function writeFeedback(interview) {
@@ -292,7 +321,7 @@ export async function finishVoiceInterview(id) {
     const interview = await getOwnInterview(user.id, id);
 
     if (interview.status === "ABANDONED") return { error: "This interview was ended without any answers." };
-    if (interview.status === "COMPLETED" && interview.feedback) return { ok: true };
+    if (interview.feedback && interview.status !== "IN_PROGRESS") return { ok: true };
 
     if (answeredCount(interview.turns) === 0) {
         await db.voiceInterview.update({ where: { id }, data: { status: "ABANDONED", completedAt: new Date() } });
@@ -308,9 +337,12 @@ export async function finishVoiceInterview(id) {
     }
 
     revalidatePath("/interview");
+    // Already written while the interviewer was saying goodbye.
+    if (interview.feedback) return { ok: true };
 
     try {
-        await writeFeedback(interview);
+        // Joins the feedback already being written after the last answer, if there is one.
+        await once(`feedback:${id}`, () => writeFeedback(interview));
         return { ok: true };
     } catch (error) {
         console.error("Couldn't write interview feedback:", error);
