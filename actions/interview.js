@@ -14,16 +14,17 @@ async function getCurrentUser() {
     return user;
 }
 
-async function writeQuizHalf(user, half) {
-    const raw = await generateJSON(buildQuizPrompt(user, half), { speed: "fast", schema: QUIZ_JSON_SCHEMA, maxTokens: 1800, timeoutMs: 15000 });
+async function writeQuizHalf(user, half, topic) {
+    const raw = await generateJSON(buildQuizPrompt(user, half, topic), { speed: "fast", schema: QUIZ_JSON_SCHEMA, maxTokens: 1800, timeoutMs: 15000 });
     return parseQuizQuestions(raw);
 }
 
-export async function generateQuiz() {
+export async function generateQuiz({ topic } = {}) {
     const user = await getCurrentUser();
+    const focus = typeof topic === "string" ? topic.trim().slice(0, 40) : "";
 
     // Both halves at once; a quiz is still worth taking if one comes back short.
-    const halves = await Promise.allSettled(QUIZ_HALVES.map((half) => writeQuizHalf(user, half)));
+    const halves = await Promise.allSettled(QUIZ_HALVES.map((half) => writeQuizHalf(user, half, focus)));
     try {
         return combineQuizHalves(halves.map((half) => (half.status === "fulfilled" ? half.value : [])));
     } catch (error) {
