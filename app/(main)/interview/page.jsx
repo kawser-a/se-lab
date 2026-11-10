@@ -9,7 +9,7 @@ const InterviewPage = async () => {
     return (
         <div className='pt-4'>
             <div className=''>
-                <h1 className='text-6xl font-bold gradient-title text-[#F4F4F5]'>Interview <span className="relative inline-block mb-10">
+                <h1 className='text-4xl md:text-6xl font-bold gradient-title text-[#F4F4F5]'>Interview <span className="relative inline-block mb-10">
                     <span className="absolute inset-0 rotate-2 bg-[#9EFF00] -z-10 px-1" />
                     <strong className="text-black">Preparation</strong>
                 </span>

@@ -21,7 +21,8 @@ const StatsCards = ({ assesments }) => {
             return null;
         }
 
-        return assesments[0];
+        // getAssesments returns the oldest first.
+        return assesments.at(-1);
     }
 
     const getTotalQuestions = () => {

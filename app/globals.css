@@ -355,31 +355,6 @@ body {
 /* stats1 end */
 
 /* testimonial animation */
-/* @keyframes scroll-left {
-    0% {
-      transform: translateX(0);
-    }
-    100% {
-      transform: translateX(-50%);
-    }
-  }
-
-  @keyframes scroll-right {
-    0% {
-      transform: translateX(0);
-    }
-    100% {
-      transform: translateX(50%);
-    }
-  }
-
-  .animate-scroll-left {
-    animation: scroll-left linear infinite;
-  }
-
-  .animate-scroll-right {
-    animation: scroll-right linear infinite;
-  } */
 
   /* Existing animations */
 @keyframes scroll-left {
@@ -391,12 +366,13 @@ body {
     }
   }
 
+  /* Starts half way along so the duplicated row fills the space on the left. */
   @keyframes scroll-right {
     0% {
-      transform: translateX(0);
+      transform: translateX(-50%);
     }
     100% {
-      transform: translateX(50%);
+      transform: translateX(0);
     }
   }
 

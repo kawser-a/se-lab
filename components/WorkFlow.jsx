@@ -4,12 +4,12 @@ import Image from 'next/image';
 import React from 'react';
 import { LeaderboardCard } from './sub-comp/LeaderboardCard';
 
-const MeditationSection = () => {
+const WorkFlow = () => {
     return (
         <section id="how-it-works" className="scroll-mt-28 bg-[#0E0E0E] text-[#F4F4F5] mt-24 pt-3">
-            <div className="page-container container max-w-6xl mx-auto px-6 sm:px-6 lg:px-6 pb-12">
+            <div className="page-container container max-w-6xl mx-auto px-2 sm:px-6 pb-12">
                 {/* Header */}
-                <div className="text-center my-20">
+                <div className="text-center my-12 md:my-20">
                     <h2 className="text-center text-[#F4F4F5] text-3xl leading-tight md:text-5xl font-extrabold tracking-tight">
                         How It Works – <span className='underline decoration-wavy decoration-[#9EFF00] underline-offset-6'>
                         From First Step to First Offer
@@ -142,11 +142,11 @@ const MeditationSection = () => {
 
 
                     {/* Career Coach (Use Case: For Freshers) */}
-                    <div className="h-[418px] col-span-12 md:col-span-8 group p-6 rounded-3xl border border-[#1A1A1A] bg-gradient-to-br from-[#121212] to-[#1A1A1A] hover:to-[#191919] transition-colors duration-300 shadow-lg hover:shadow-[#9EFF00]/20 overflow-hidden relative flex flex-col justify-between">
+                    <div className="h-[380px] md:h-[418px] col-span-12 md:col-span-8 group p-6 rounded-3xl border border-[#1A1A1A] bg-gradient-to-br from-[#121212] to-[#1A1A1A] hover:to-[#191919] transition-colors duration-300 shadow-lg hover:shadow-[#9EFF00]/20 overflow-hidden relative flex flex-col justify-between">
                         {/* Images */}
                         <div className="relative flex justify-center mt-5 md:mt-0 -space-x-24 no-scrollbar z-10">
                             {[0, 1, 2].map((_, i) => (
-                                <div key={i} className={`md:h-[26rem] ${i === 1 ? 'h-[19rem]' : 'h-[18rem]'}`}>
+                                <div key={i} className={`md:h-[26rem] ${i === 1 ? 'h-[17rem]' : 'h-[16rem]'}`}>
                                     <Image
                                         src={`/images/m1.jpg`}
                                         width={280}
@@ -165,7 +165,7 @@ const MeditationSection = () => {
                         <div className="absolute bottom-0 left-0 right-0 z-30 p-6">
                             <h3 className="text-xl font-semibold mb-2 text-[#9EFF00]">AI Career Coach</h3>
                             <p className="text-sm text-[#D4D4D8]">
-                                Get personalized career path recommendations based on your skills, experience, and goals. Get personalized career path recommendations based on your skills, experience, and goals. Get personalized career path recommendations based on your skills, experience, and goals.
+                                Get personalized career path recommendations based on your skills, experience, and goals.
                             </p>
                         </div>
                     </div>
@@ -176,4 +176,4 @@ const MeditationSection = () => {
     );
 };
 
-export default MeditationSection;
+export default WorkFlow;

@@ -90,10 +90,8 @@ export default function FeatureCarousel({
         const card = cards[currentIndex];
         const container = carouselRef.current;
         if (card && container) {
-            const offset =
-                card.offsetLeft -
-                container.offsetLeft -
-                (container.clientWidth - card.clientWidth) / 2;
+            // The list is position: relative, so offsetLeft is already measured from it.
+            const offset = card.offsetLeft - (container.clientWidth - card.clientWidth) / 2;
             container.scrollTo({
                 left: offset,
                 behavior: 'smooth',
@@ -102,8 +100,8 @@ export default function FeatureCarousel({
     }, [currentIndex]);
 
     return (
-        <main className='mt-36'>
-            <section id="features" className='page-container  px-6'>
+        <main className='mt-20 md:mt-36'>
+            <section id="features" className='page-container px-2 sm:px-6'>
                     <h3 className='text-center text-[#D4D4D8] text-sm md:text-base font-medium tracking-wide'>
                         Get Started <span className='underline decoration-wavy decoration-[#9EFF00] underline-offset-6'>
                             Effortlessly
@@ -115,11 +113,11 @@ export default function FeatureCarousel({
                             <strong className="text-black"> Built for You!</strong>
                         </span>
                     </h2>
-                    <div className="my-16 flex flex-col lg:flex-row justify-between items-stretch gap-y-16">
+                    <div className="my-10 md:my-16 flex flex-col lg:flex-row justify-between items-stretch gap-y-8 md:gap-y-16">
 
                         {/* Right Media */}
-                        <div className='w-full lg:max-w-[60%] mr-52'>
-                            <div className={clsx('h-[550px] flex-1 min-w-[500px]', ltr && 'lg:order-1')}>
+                        <div className='w-full lg:max-w-[60%] lg:mr-10 xl:mr-52'>
+                            <div className={clsx('h-64 sm:h-96 lg:h-[550px] flex-1 lg:min-w-[500px]', ltr && 'lg:order-1')}>
                                 {data[currentIndex]?.image ? (
                                     <img
                                         src={data[currentIndex].image}
@@ -207,7 +205,7 @@ export default function FeatureCarousel({
                         </div>
 
                         {/* Mobile Progress Line */}
-                        <div className="relative -mb-8 md:hidden pb-0.5 [-webkit-mask-image:linear-gradient(90deg,transparent,black_20%,white_80%,transparent)] [mask-image:linear-gradient(90deg,transparent,black_20%,white_80%,transparent)]">
+                        <div className="relative -mb-4 lg:hidden pb-0.5 [-webkit-mask-image:linear-gradient(90deg,transparent,black_20%,white_80%,transparent)] [mask-image:linear-gradient(90deg,transparent,black_20%,white_80%,transparent)]">
                             {data.map((_, index) => (
                                 <div
                                     key={index}
@@ -230,17 +228,17 @@ export default function FeatureCarousel({
                         {/* Mobile Scroll Cards */}
                         <ul
                             ref={carouselRef}
-                            className="relative flex h-full snap-x snap-mandatory flex-nowrap overflow-x-auto lg:hidden [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-webkit-mask-image:linear-gradient(90deg,transparent,black_20%,white_80%,transparent)] [mask-image:linear-gradient(90deg,transparent,black_20%,white_80%,transparent)]"
+                            className="relative flex h-full snap-x snap-mandatory flex-nowrap overflow-x-auto lg:hidden [&::-webkit-scrollbar]:hidden [scrollbar-width:none] "
                         >
                             {data.map((item, index) => (
                                 <li
                                     key={item.id}
-                                    className="card_code relative mr-8 grid h-full max-w-full pl-2 shrink-0 items-start justify-center last:mr-0"
+                                    className="card_code relative mr-4 w-[85%] sm:w-[60%] shrink-0 space-y-1 cursor-pointer last:mr-0"
                                     onClick={() => setCurrentIndex(index)}
                                     style={{ scrollSnapAlign: 'center' }}
                                 >
-                                    <h2 className="text-xl font-bold">{item.title}</h2>
-                                    <p className="mx-0 max-w-sm text-balance text-sm">{item.content}</p>
+                                    <h2 className={clsx("text-xl font-bold", currentIndex === index && "text-[#C9F300]")}>{item.title}</h2>
+                                    <p className="text-sm text-[#A1A1AA]">{item.content}</p>
                                 </li>
                             ))}
                         </ul>

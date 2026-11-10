@@ -43,8 +43,8 @@ export default function NewsletterSection() {
 
     return (
         <main className="">
-            <section className="page-container text-white mt-36 py-8">
-                <form onSubmit={handleSubmit} className="flex flex-col md:flex-row items-center justify-center gap-8">
+            <section className="page-container px-2 sm:px-0 text-white mt-20 md:mt-36 py-8">
+                <form onSubmit={handleSubmit} className="flex flex-col lg:flex-row lg:items-center justify-center gap-4 lg:gap-8">
                     {/* Left - Input Form */}
                     <div className="flex-1 w-full">
                         <h2 className='block mb-3 text-[#F4F4F5] text-3xl leading-tight md:text-5xl font-extrabold tracking-tight'>
@@ -52,18 +52,18 @@ export default function NewsletterSection() {
                             <span className="absolute inset-0 rotate-2 bg-[#9EFF00] z-0 px-1" />
                             <strong className="relative text-black"> GrowthGrid </strong></span> news
                         </h2>
-                        <div className="flex w-full gap-4 my-4">
+                        <div className="flex flex-col sm:flex-row w-full gap-3 sm:gap-4 my-4">
                             <input
                                 type="email"
                                 placeholder="Business Email Address"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                className="w-2xl px-4 py-2 rounded-md bg-[#111114] text-white border border-[#2c2c2e] focus:outline-4 outline-[#C9F300]"
+                                className="w-full sm:max-w-2xl h-12 px-4 py-2 rounded-md bg-[#111114] text-white border border-[#2c2c2e] focus:outline-4 outline-[#C9F300]"
                             />
                             <button
                                 type="submit"
                                 disabled={isPending}
-                                className="px-6 py-2 text-black rounded-md font-medium h-12 text-sm md:text-base tracking-wide leading-normal
+                                className="justify-center shrink-0 px-6 py-2 text-black rounded-md font-medium h-12 text-sm md:text-base tracking-wide leading-normal
                                 bg-gradient-to-r from-[#9EFF00] via-[#C9F300] to-[#9EFF00] bg-[length:200%_200%] shadow-[0_0_15px_-3px_#9EFF00]
                                 transition-all duration-300 ease-in-out
                                 flex items-center gap-2 relative overflow-hidden group
@@ -117,7 +117,7 @@ export default function NewsletterSection() {
                     </div>
 
                     {/* Right - Policy */}
-                    <div className="max-w-md mt-8">
+                    <div className="max-w-md lg:mt-8">
                         <p className="text-sm max-w-3xl mx-auto text-gray-300 leading-relaxed">
                             We only use your email to send GrowthGrid updates, and we never share it with anyone.
                         </p>

@@ -49,7 +49,7 @@ export default function FaqSection() {
     };
 
     return (
-        <main className="mt-36">
+        <main className="mt-20 md:mt-36">
             <section className="page-container w-full px-6 space-y-12">
                     <div className="text-center">
                         <h1 className="text-center text-[#F4F4F5] text-3xl leading-tight md:text-5xl font-extrabold tracking-tight">

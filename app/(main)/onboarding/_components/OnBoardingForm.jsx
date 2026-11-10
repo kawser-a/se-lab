@@ -167,7 +167,7 @@ const OnBoardingForm = ({ industries }) => {
                                         {...register("skills")}
                                     />
                                     <p className="text-sm text-muted-foreground">
-                                        Seperate multiple skills with commas
+                                        Separate multiple skills with commas
                                     </p>
                                         {
                                             errors.skills && (
@@ -188,7 +188,7 @@ const OnBoardingForm = ({ industries }) => {
                                         {...register("bio")}
                                     />
                                     <p className="text-sm text-muted-foreground">
-                                        Seperate multiple skills with commas
+                                        A few lines about your experience, up to 500 characters
                                     </p>
                                         {
                                             errors.bio && (

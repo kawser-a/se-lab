@@ -62,7 +62,7 @@ const TemplatePicker = ({ resumes }) => {
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 pb-24 sm:pb-0">
             <div className="flex flex-wrap gap-2" role="group" aria-label="Filter templates">
                 {FILTERS.map((item) => (
                     <button
@@ -90,21 +90,21 @@ const TemplatePicker = ({ resumes }) => {
                             aria-pressed={active}
                             onClick={() => choose(template.id)}
                             className={cn(
-                                "flex flex-col overflow-hidden rounded-xl bg-card text-left transition-colors",
+                                "flex flex-row sm:flex-col overflow-hidden rounded-xl bg-card text-left transition-colors",
                                 active ? "border-2 border-[#9EFF00]" : "border hover:border-neutral-500"
                             )}
                         >
-                            <span className="relative flex h-64 w-full items-end justify-center bg-neutral-800 pt-6">
+                            <span className="relative flex w-28 shrink-0 items-center justify-center bg-neutral-800 py-3 sm:h-64 sm:w-full sm:items-end sm:py-0 sm:pt-6">
                                 {active && (
-                                    <span className="absolute right-3 top-3 flex size-7 items-center justify-center rounded-full bg-[#9EFF00] text-black">
+                                    <span className="absolute right-2 top-2 sm:right-3 sm:top-3 flex size-6 sm:size-7 items-center justify-center rounded-full bg-[#9EFF00] text-black">
                                         <Check className="size-4" strokeWidth={3} />
                                     </span>
                                 )}
-                                <TemplateThumbnail templateId={template.id} accent={template.theme.accent} className="h-56 w-44" />
+                                <TemplateThumbnail templateId={template.id} accent={template.theme.accent} className="h-28 w-20 gap-1 rounded-sm px-2 pt-2.5 sm:h-56 sm:w-44 sm:gap-1.5 sm:rounded-b-none sm:px-3.5 sm:pt-4" />
                             </span>
-                            <span className="flex flex-col gap-2 p-4">
-                                <span className="text-lg font-bold">{template.name}</span>
-                                <span className="text-sm leading-relaxed text-muted-foreground">{template.description}</span>
+                            <span className="flex min-w-0 flex-col gap-1.5 p-3 sm:gap-2 sm:p-4">
+                                <span className="text-base font-bold sm:text-lg">{template.name}</span>
+                                <span className="text-xs leading-relaxed text-muted-foreground sm:text-sm">{template.description}</span>
                                 <span className="mt-1 flex flex-wrap gap-1.5 text-xs">
                                     <span className="rounded-full bg-neutral-800 px-2 py-0.5">{template.pages}</span>
                                     <span
@@ -164,6 +164,21 @@ const TemplatePicker = ({ resumes }) => {
                     <Button onClick={create} disabled={creating || !title.trim()}>
                         {creating && <Loader2 className="animate-spin" />}
                         Create with {chosen?.shortName}
+                    </Button>
+                </div>
+            </div>
+
+            {/* On phones the form above sits below all the templates, so keep the
+                next step in reach. The name has a sensible default already. */}
+            <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-[#121212]/95 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur sm:hidden">
+                <div className="flex items-center gap-3">
+                    <div className="min-w-0 flex-1">
+                        <p className="text-xs text-muted-foreground">Selected</p>
+                        <p className="truncate text-sm font-semibold">{chosen?.name}</p>
+                    </div>
+                    <Button onClick={create} disabled={creating || !title.trim()} className="h-11 px-5">
+                        {creating && <Loader2 className="animate-spin" />}
+                        Create CV
                     </Button>
                 </div>
             </div>
