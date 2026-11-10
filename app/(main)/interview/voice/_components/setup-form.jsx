@@ -145,7 +145,7 @@ const SetupForm = ({ defaults }) => {
                 <p className="text-sm text-muted-foreground">Works best in Chrome, Edge or Safari, in a quiet room.</p>
                 <Button type="submit" size="lg" className="h-12" disabled={starting || role.trim().length < 2}>
                     {starting && <Loader2 className="animate-spin" />}
-                    {starting ? "Preparing your questions" : "Start interview"}
+                    {starting ? "Starting" : "Start interview"}
                 </Button>
             </div>
         </form>

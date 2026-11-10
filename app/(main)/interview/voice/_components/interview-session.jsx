@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Captions, CaptionsOff, Check, Ellipsis, Hand, Keyboard, Loader2, Mic, PhoneOff, Repeat2, SkipForward, Volume2, VolumeX } from "lucide-react";
 import { toast } from "sonner";
-import { finishVoiceInterview, submitVoiceAnswer } from "@/actions/voice-interview";
+import { finishVoiceInterview, prepareVoiceInterview, submitVoiceAnswer } from "@/actions/voice-interview";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -86,7 +86,50 @@ const InterviewSession = ({ initialView, capabilities }) => {
     // Release the microphone when it's replaced or the page closes, and the
     // interviewer's voice only when the page closes.
     useEffect(() => () => stream?.getTracks().forEach((track) => track.stop()), [stream]);
-    useEffect(() => () => speaker.current?.dispose(), []);
+    // The voice is set up on arrival so audio can load during the mic check.
+    // It can only start playing after the click on "Join".
+    useEffect(() => {
+        speaker.current = createSpeaker({
+            voice: initialView.interviewer.voice,
+            serverVoice: capabilities.serverVoice,
+            onLevel: setSpeakLevel,
+            onCaption: setCaption,
+        });
+        return () => speaker.current?.dispose();
+    }, [initialView.interviewer.voice, capabilities.serverVoice]);
+
+    // Questions are written while the candidate is in the lobby.
+    const [prepareError, setPrepareError] = useState(null);
+    const prepare = useCallback(async () => {
+        setPrepareError(null);
+        try {
+            const result = await prepareVoiceInterview(viewRef.current.id);
+            if (result.error) setPrepareError(result.error);
+            else setView(result.view);
+        } catch {
+            setPrepareError("Couldn't prepare your questions. Check your connection and try again.");
+        }
+    }, []);
+
+    useEffect(() => {
+        if (initialView.preparing) prepare();
+    }, [initialView.preparing, prepare]);
+
+    // Once the questions exist, load what the interviewer will say first.
+    const linesFor = useCallback((target, opening) => {
+        const firstQuestion = target.turnIndex === 0;
+        // A greeting or "welcome back" replaces the usual "Thanks, moving on".
+        const lead = opening && !firstQuestion ? null : target.step.lead;
+        return [opening, lead, target.step.prompt];
+    }, []);
+
+    const ready = !view.preparing;
+    useEffect(() => {
+        if (!ready || phase !== "lobby") return;
+        const current = viewRef.current;
+        speaker.current?.prefetch(linesFor(current, current.turnIndex === 0 ? current.script.opening : current.script.resume));
+        speaker.current?.prefetch(NOT_CAUGHT);
+    }, [ready, phase, linesFor]);
 
     // Returns the mode it switched to, so the message can say what happens next.
     const onModeFailed = useCallback(() => {
@@ -96,26 +139,23 @@ const InterviewSession = ({ initialView, capabilities }) => {
         return next;
     }, [capabilities.serverTranscription, stream]);
 
-    const say = useCallback(async (text) => {
-        setCaption(text);
-        if (voiceOnRef.current && speaker.current) await speaker.current.speak(text);
+    const say = useCallback(async (parts) => {
+        setCaption([].concat(parts).filter(Boolean).join(" "));
+        if (voiceOnRef.current && speaker.current) await speaker.current.speak(parts);
     }, []);
 
-    // `opening` replaces the usual lead-in: the greeting on the first
-    // question, or "welcome back" when rejoining, where "Thanks, moving on"
-    // would make no sense.
     const ask = useCallback(
         async (target, opening) => {
             if (target.step.type !== "question") return;
             setProblem(null);
             setPhase("speaking");
-            const firstQuestion = target.turnIndex === 0;
-            const lead = opening && !firstQuestion ? null : target.step.lead;
-            await say([opening, lead, target.step.prompt].filter(Boolean).join(" "));
+            // Load the next question's audio while this one is asked and answered.
+            if (target.upcoming) speaker.current?.prefetch(target.upcoming);
+            await say(linesFor(target, opening));
             setCaption(target.step.prompt);
             setPhase((current) => (current === "speaking" ? "answering" : current));
         },
-        [say]
+        [say, linesFor]
     );
 
     const finish = useCallback(async () => {
@@ -233,14 +273,8 @@ const InterviewSession = ({ initialView, capabilities }) => {
     }, [phase, answer.status, typed]);
 
     const join = (micStream) => {
-        speaker.current = createSpeaker({
-            voice: view.interviewer.voice,
-            serverVoice: capabilities.serverVoice,
-            onLevel: setSpeakLevel,
-            onCaption: setCaption,
-        });
         // Called from the click on "Join", which is what lets audio play.
-        speaker.current.unlock();
+        speaker.current?.unlock();
 
         if (micStream) {
             setStream(micStream);
@@ -325,7 +359,22 @@ const InterviewSession = ({ initialView, capabilities }) => {
                                 : `A spoken interview for the ${view.role} role. Answer out loud, the way you would on a call. Take a moment to think before you answer whenever you need to.`}
                         </p>
                     </div>
-                    <MicCheck voiceAvailable={voiceAvailable} onReady={join} onTypeInstead={() => join(null)} resuming={resuming} />
+                    <MicCheck
+                        voiceAvailable={voiceAvailable}
+                        onReady={join}
+                        onTypeInstead={() => join(null)}
+                        resuming={resuming}
+                        waiting={!ready}
+                        waitingLabel={`${view.interviewer.name} is preparing your questions`}
+                    />
+                    {prepareError && (
+                        <div role="alert" className="flex flex-col gap-3 rounded-xl border border-amber-400/30 bg-amber-400/5 p-4 text-sm sm:flex-row sm:items-center">
+                            <p className="flex-1 text-amber-100">{prepareError}</p>
+                            <Button size="sm" onClick={prepare}>
+                                Try again
+                            </Button>
+                        </div>
+                    )}
                 </div>
             </div>
         );

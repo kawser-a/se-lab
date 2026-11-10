@@ -7,7 +7,9 @@ import { createLevelMeter, getMicrophone, microphoneError } from "@/lib/intervie
 
 // Run before the interview so permission or hardware problems show up here,
 // not halfway through an answer.
-const MicCheck = ({ voiceAvailable, onReady, onTypeInstead, resuming }) => {
+// `waiting` keeps the join buttons disabled while the questions are still
+// being written, so the mic check and the preparation happen side by side.
+const MicCheck = ({ voiceAvailable, onReady, onTypeInstead, resuming, waiting = false, waitingLabel }) => {
     const [state, setState] = useState("idle"); // idle | asking | live | failed
     const [stream, setStream] = useState(null);
     const [level, setLevel] = useState(0);
@@ -42,8 +44,9 @@ const MicCheck = ({ voiceAvailable, onReady, onTypeInstead, resuming }) => {
                 <p className="text-sm text-muted-foreground">
                     This browser can&apos;t take spoken answers, so you&apos;ll type them instead. The interviewer still speaks each question.
                 </p>
-                <Button size="lg" className="h-12 w-full sm:w-auto" onClick={onTypeInstead}>
-                    <Keyboard /> {resuming ? "Rejoin interview" : "Join interview"}
+                <Button size="lg" className="h-12 w-full sm:w-auto" onClick={onTypeInstead} disabled={waiting}>
+                    {waiting ? <Loader2 className="animate-spin" /> : <Keyboard />}
+                    {waiting ? waitingLabel : resuming ? "Rejoin interview" : "Join interview"}
                 </Button>
             </div>
         );
@@ -77,8 +80,9 @@ const MicCheck = ({ voiceAvailable, onReady, onTypeInstead, resuming }) => {
 
             <div className="flex flex-col gap-3 sm:flex-row lg:flex-col xl:flex-row">
                 {state === "live" ? (
-                    <Button size="lg" className="h-12" onClick={() => onReady(stream)}>
-                        {resuming ? "Rejoin interview" : "Join interview"}
+                    <Button size="lg" className="h-12" onClick={() => onReady(stream)} disabled={waiting}>
+                        {waiting && <Loader2 className="animate-spin" />}
+                        {waiting ? waitingLabel : resuming ? "Rejoin interview" : "Join interview"}
                     </Button>
                 ) : (
                     <Button size="lg" className="h-12" onClick={check} disabled={state === "asking"}>
@@ -86,7 +90,7 @@ const MicCheck = ({ voiceAvailable, onReady, onTypeInstead, resuming }) => {
                         {state === "failed" ? "Try the microphone again" : "Check microphone"}
                     </Button>
                 )}
-                <Button size="lg" variant="ghost" className="h-12" onClick={onTypeInstead}>
+                <Button size="lg" variant="ghost" className="h-12" onClick={onTypeInstead} disabled={waiting}>
                     <Keyboard /> Type my answers instead
                 </Button>
             </div>
