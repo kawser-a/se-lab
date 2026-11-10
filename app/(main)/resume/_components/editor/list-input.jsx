@@ -83,8 +83,10 @@ const ListInput = ({ label, values, onChange, templateId, allowAi = true, max = 
                             suggestion={suggesting.text}
                             loading={suggesting.loading}
                             onAccept={() => {
+                                const before = values[index];
                                 update(index, suggesting.text);
                                 setSuggesting(null);
+                                toast("Suggestion used", { action: { label: "Undo", onClick: () => update(index, before) } });
                             }}
                             onRetry={() => suggest(index)}
                             onDismiss={() => {
