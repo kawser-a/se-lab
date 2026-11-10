@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { answerInputSchema, interviewConfigSchema } from "@/lib/interview/config";
-import { buildTurn, classifyAnswer, nextStep, parseFollowUp, shouldConsiderFollowUp } from "@/lib/interview/engine";
+import { answerInputSchema, interviewConfigSchema, minutesFor } from "@/lib/interview/config";
+import { buildTurn, classifyAnswer, nextStep, parseFollowUp, shouldReact } from "@/lib/interview/engine";
 import { answerMetrics, countWords, findFillers, paceLabel } from "@/lib/interview/metrics";
 import { InvalidPlanError, normalizePlan } from "@/lib/interview/plan";
 import { closingLine, interviewerFor, leadIn, openingLine } from "@/lib/interview/script";
 import { searchRoles } from "@/lib/interview/roles";
 import { splitForSpeech } from "@/lib/interview/speech";
-import { buildFeedback, parseEvaluation, scoreFromRatings } from "@/lib/interview/scoring";
+import { buildFeedback, normalizeRatings, parseEvaluation, scoreFromRatings } from "@/lib/interview/scoring";
 
 const plan = {
     questions: [
@@ -28,8 +28,20 @@ describe("interview config", () => {
         expect(parsed).toEqual({ role: "Frontend Developer", type: "mixed", level: "entry", questionCount: 5, focus: [], interviewer: "hannah" });
     });
 
-    it("rejects lengths that aren't offered", () => {
-        expect(interviewConfigSchema.safeParse({ role: "QA", type: "mixed", level: "entry", questionCount: 40 }).success).toBe(false);
+    it("takes any length on the scale and nothing outside it", () => {
+        const setup = (questionCount) => interviewConfigSchema.safeParse({ role: "QA", type: "mixed", level: "entry", questionCount });
+        expect(setup(3).success).toBe(true);
+        expect(setup("8").data.questionCount).toBe(8);
+        expect(setup(10).success).toBe(true);
+        expect(setup(2).success).toBe(false);
+        expect(setup(11).success).toBe(false);
+        expect(setup(4.5).success).toBe(false);
+    });
+
+    it("estimates the length in minutes", () => {
+        expect(minutesFor(3)).toBe(10);
+        expect(minutesFor(5)).toBe(15);
+        expect(minutesFor(10)).toBe(30);
     });
 
     it("caps answer length", () => {
@@ -116,10 +128,10 @@ describe("follow-ups", () => {
     const step = { kind: "main" };
 
     it("only considers real answers to main questions", () => {
-        expect(shouldConsiderFollowUp(step, voice("I led the migration to TypeScript across three services last year"))).toBe(true);
-        expect(shouldConsiderFollowUp(step, voice("Not sure"))).toBe(false);
-        expect(shouldConsiderFollowUp({ kind: "follow-up" }, voice("I led the migration to TypeScript across three services"))).toBe(false);
-        expect(shouldConsiderFollowUp(step, { ...voice("long enough answer here with many words in it"), skipped: true })).toBe(false);
+        expect(shouldReact(step, voice("I led the migration to TypeScript across three services last year"))).toBe(true);
+        expect(shouldReact(step, voice("Not sure"))).toBe(false);
+        expect(shouldReact({ kind: "follow-up" }, voice("I led the migration to TypeScript across three services"))).toBe(true);
+        expect(shouldReact(step, { ...voice("long enough answer here with many words in it"), skipped: true })).toBe(false);
     });
 
     it("reads the follow-up and the acknowledgment", () => {
@@ -164,13 +176,26 @@ describe("metrics", () => {
 });
 
 describe("scoring", () => {
-    const ratings = (n) => ({ relevance: n, depth: n, structure: n, communication: n });
+    const ratings = (n) => ({ understanding: n, depth: n, communication: n });
 
-    it("maps ratings onto 0 to 100", () => {
+    it("maps ratings onto 0 to 100, weighting depth most", () => {
         expect(scoreFromRatings(ratings(1))).toBe(0);
         expect(scoreFromRatings(ratings(3))).toBe(50);
         expect(scoreFromRatings(ratings(5))).toBe(100);
-        expect(scoreFromRatings({ relevance: 5, depth: 5, structure: 1, communication: 1 })).toBe(60);
+        expect(scoreFromRatings({ understanding: 1, depth: 5, communication: 1 })).toBe(40);
+        expect(scoreFromRatings({ understanding: 5, depth: 1, communication: 1 })).toBe(30);
+    });
+
+    it("reads ratings from reports written with the old criteria", () => {
+        expect(normalizeRatings({ relevance: 4, depth: 3, structure: 2, communication: 4 })).toEqual({ understanding: 4, depth: 3, communication: 3 });
+        expect(normalizeRatings(ratings(2))).toEqual(ratings(2));
+        expect(normalizeRatings(null)).toBeNull();
+    });
+
+    it("keeps a note per skill and copes without one", () => {
+        const withNotes = parseEvaluation({ summary: "ok", skillNotes: { depth: "Add numbers." }, questions: [] });
+        expect(withNotes.skillNotes.depth).toBe("Add numbers.");
+        expect(parseEvaluation({ summary: "ok", skillNotes: "nonsense", questions: [] }).skillNotes).toEqual({});
     });
 
     it("counts skipped questions as zero and ignores ratings the model gave them", () => {
@@ -189,7 +214,7 @@ describe("scoring", () => {
         expect(feedback.questions.map((q) => q.score)).toEqual([100, 0]);
         expect(feedback.questions[1].skipped).toBe(true);
         expect(feedback.score).toBe(50);
-        expect(feedback.criteria.relevance).toBe(5);
+        expect(feedback.criteria.understanding).toBe(5);
     });
 
     it("leaves out questions that were never reached", () => {
@@ -202,15 +227,15 @@ describe("scoring", () => {
     it("pulls out-of-range ratings into 1 to 5 and trims long text", () => {
         const evaluation = parseEvaluation({
             summary: "x".repeat(900),
-            questions: [{ questionId: "q1", scores: { relevance: 0, depth: 4.6, structure: "3", communication: 7 }, strengths: ["a", "b", "c", "d"] }],
+            questions: [{ questionId: "q1", scores: { understanding: 0, depth: 4.6, communication: "3" }, strengths: ["a", "b", "c", "d"] }],
         });
-        expect(evaluation.questions[0].scores).toEqual({ relevance: 1, depth: 5, structure: 3, communication: 5 });
+        expect(evaluation.questions[0].scores).toEqual({ understanding: 1, depth: 5, communication: 3 });
         expect(evaluation.questions[0].strengths).toHaveLength(3);
         expect(evaluation.summary.length).toBeLessThanOrEqual(800);
     });
 
     it("rejects malformed feedback", () => {
-        expect(() => parseEvaluation({ summary: "x", questions: [{ questionId: "q1", scores: { relevance: 9 } }] })).toThrow();
+        expect(() => parseEvaluation({ summary: "x", questions: [{ questionId: "q1", scores: { understanding: 9 } }] })).toThrow();
     });
 });
 
@@ -249,10 +274,19 @@ describe("conversation script", () => {
     });
 
     it("leads into each question naturally", () => {
-        expect(leadIn(step(1), [])).toBe("Let's start with this one.");
-        expect(leadIn(step(1, "follow-up"), [turn({ ack: "Interesting that you chose context." })])).toBe("Interesting that you chose context.");
-        expect(leadIn(step(3), [turn(), turn()])).toMatch(/Last question\.$/);
-        expect(leadIn(step(2), [turn({ skipped: true })])).toMatch(/^No problem\./);
+        expect(leadIn(step(1), []).lead).toMatch(/start with this one\.$/);
+        expect(leadIn(step(1, "follow-up"), [turn({ ack: "Interesting that you chose context." })]).lead).toBe("Interesting that you chose context.");
+        expect(leadIn(step(3), [turn(), turn()]).lead).toMatch(/last question\.$/);
+        expect(leadIn(step(2), [turn({ skipped: true })]).lead).toMatch(/^No problem/);
+    });
+
+    it("leaves out the stock thanks once the browser has said okay", () => {
+        const plain = leadIn(step(2), [turn()]);
+        expect(plain.lead).not.toBe(plain.bridge);
+        expect(plain.bridge).not.toMatch(/thank|got it|makes sense/i);
+        const reacted = leadIn(step(2), [turn({ ack: "I like that you measured it first." })]);
+        expect(reacted.bridge).toMatch(/^I like that you measured it first\. /);
+        expect(leadIn(step(2, "follow-up"), [turn()]).bridge).toBe("");
     });
 
     it("falls back to the default interviewer", () => {

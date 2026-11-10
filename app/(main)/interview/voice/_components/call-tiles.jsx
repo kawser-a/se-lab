@@ -1,47 +1,78 @@
-import { Mic, MicOff } from "lucide-react";
+"use client";
+
+import { motion } from "motion/react";
+import { Mic, MicOff, Pause } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const STATUS = {
     speaking: "Speaking",
     listening: "Listening",
-    thinking: "Thinking",
-    idle: null,
+    paused: "Paused",
 };
 
-// The interviewer's side of the call. The rings follow the actual loudness
-// of their voice, so it looks like someone talking rather than a spinner.
-export function InterviewerTile({ interviewer, state, level, compact = false, children }) {
+// Each bar moves with the voice at a slightly different weight, so the
+// shape changes as they talk instead of the whole row bouncing together.
+const BAR_WEIGHTS = [0.45, 0.8, 1, 0.7, 0.4];
+
+function VoiceBars({ level, active }) {
+    return (
+        <span className="flex h-6 items-center gap-1" aria-hidden="true">
+            {BAR_WEIGHTS.map((weight, index) => (
+                <span
+                    key={index}
+                    className="w-1 rounded-full bg-[#9EFF00] transition-[height,opacity] duration-100"
+                    style={{ height: `${active ? Math.max(18, Math.min(100, level * 160 * weight)) : 18}%`, opacity: active ? 1 : 0.35 }}
+                />
+            ))}
+        </span>
+    );
+}
+
+// The interviewer's side of the call. The rings follow the loudness of
+// their voice while they talk, and while the candidate talks the outer ring
+// follows the candidate's voice instead, so the interviewer visibly listens.
+export function InterviewerTile({ interviewer, state, level = 0, listenLevel = 0, className, children }) {
     const speaking = state === "speaking";
+    const listening = state === "listening";
 
     return (
         <div
             className={cn(
-                "relative flex w-full items-center justify-center overflow-hidden rounded-3xl border bg-[radial-gradient(ellipse_at_center,#1f2614_0%,#121212_65%)] sm:aspect-video",
-                compact ? "aspect-[4/3]" : "aspect-[4/5]"
+                "relative isolate flex h-full w-full items-center justify-center overflow-hidden rounded-3xl border border-white/10 bg-[radial-gradient(ellipse_at_center,#1c2412_0%,#141414_55%,#101010_100%)]",
+                className
             )}
         >
-            <div className="relative flex items-center justify-center" aria-hidden="true">
-                <span
-                    className="absolute size-40 rounded-full bg-[#9EFF00]/10 transition-transform duration-75 sm:size-52"
-                    style={{ transform: `scale(${speaking ? 1 + level * 0.45 : 1})` }}
-                />
-                <span
-                    className="absolute size-32 rounded-full bg-[#9EFF00]/15 transition-transform duration-75 sm:size-40"
-                    style={{ transform: `scale(${speaking ? 1 + level * 0.25 : 1})` }}
-                />
-                <span
-                    className={cn(
-                        "relative flex size-24 items-center justify-center rounded-full bg-gradient-to-br from-[#C9F300] to-[#6FB800] text-4xl font-bold text-black shadow-[0_0_60px_-10px_#9EFF00] sm:size-28 sm:text-5xl",
-                        state === "thinking" && "motion-safe:animate-pulse"
-                    )}
-                >
-                    {interviewer.name[0]}
-                </span>
+            <div className="relative -mt-12 flex flex-col items-center gap-5 sm:mt-0" aria-hidden="true">
+                <div className="relative flex items-center justify-center">
+                    <span
+                        className="absolute size-36 rounded-full bg-[#9EFF00]/[0.07] transition-transform duration-100 sm:size-56"
+                        style={{ transform: `scale(${speaking ? 1 + level * 0.4 : 1})` }}
+                    />
+                    <span
+                        className="absolute size-28 rounded-full bg-[#9EFF00]/[0.12] transition-transform duration-100 sm:size-44"
+                        style={{ transform: `scale(${speaking ? 1 + level * 0.22 : 1})` }}
+                    />
+                    <span
+                        className={cn("absolute size-[7.5rem] rounded-full border-2 transition-[opacity,transform] duration-150 sm:size-[9rem]", listening ? "border-[#9EFF00]/70" : "border-transparent")}
+                        style={{ transform: `scale(${listening ? 1 + Math.min(listenLevel, 1) * 0.12 : 1})`, opacity: listening ? 0.4 + Math.min(listenLevel, 1) * 0.6 : 0 }}
+                    />
+                    <motion.span
+                        className={cn(
+                            "relative flex size-24 items-center justify-center rounded-full bg-gradient-to-br from-[#C9F300] to-[#6FB800] text-4xl font-bold text-black shadow-[0_0_60px_-10px_#9EFF00] sm:size-28 sm:text-5xl",
+                            state === "paused" && "opacity-60 grayscale-[40%]"
+                        )}
+                        animate={state === "paused" ? { scale: 1 } : { scale: [1, 1.035, 1] }}
+                        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                    >
+                        {interviewer.name[0]}
+                    </motion.span>
+                </div>
+                <VoiceBars level={level} active={speaking} />
             </div>
 
             {STATUS[state] && (
                 <span className="absolute left-4 top-4 flex items-center gap-2 rounded-full bg-black/50 px-3 py-1 text-xs font-medium backdrop-blur">
-                    <span className={cn("size-2 rounded-full", speaking ? "bg-[#9EFF00] motion-safe:animate-pulse" : "bg-white/50")} />
+                    {state === "paused" ? <Pause className="size-3" /> : <span className={cn("size-2 rounded-full", speaking ? "bg-[#9EFF00] motion-safe:animate-pulse" : "bg-white/60")} />}
                     {STATUS[state]}
                 </span>
             )}
@@ -57,16 +88,19 @@ export function InterviewerTile({ interviewer, state, level, compact = false, ch
 
 // The candidate's own small tile, like the self-view on a video call.
 export function SelfTile({ candidate, listening, level, micOn, wrapProgress }) {
-    const bars = [0.6, 1, 0.75];
-
     return (
-        <div className="absolute right-3 top-3 flex w-28 flex-col overflow-hidden rounded-2xl border bg-neutral-900/90 shadow-xl backdrop-blur sm:right-4 sm:top-auto sm:bottom-4 sm:w-44">
+        <div className="absolute right-3 top-3 flex w-24 flex-col overflow-hidden rounded-2xl border border-white/10 bg-neutral-900/90 shadow-xl backdrop-blur sm:right-4 sm:top-4 sm:w-40">
             <div className="relative flex aspect-video items-center justify-center">
+                <span
+                    className="absolute size-12 rounded-full bg-[#9EFF00]/20 transition-transform duration-100 sm:size-16"
+                    style={{ transform: `scale(${listening ? 1 + Math.min(level, 1) * 0.5 : 0.8})`, opacity: listening ? 1 : 0 }}
+                    aria-hidden="true"
+                />
                 {candidate.imageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={candidate.imageUrl} alt="" className={cn("size-10 rounded-full object-cover sm:size-14", listening && "ring-2 ring-[#9EFF00]")} />
+                    <img src={candidate.imageUrl} alt="" className="relative size-10 rounded-full object-cover sm:size-12" />
                 ) : (
-                    <span className={cn("flex size-10 items-center justify-center rounded-full bg-neutral-700 text-lg font-semibold sm:size-14 sm:text-xl", listening && "ring-2 ring-[#9EFF00]")}>
+                    <span className="relative flex size-10 items-center justify-center rounded-full bg-neutral-700 text-lg font-semibold sm:size-12">
                         {(candidate.name || "You")[0]}
                     </span>
                 )}
@@ -78,20 +112,7 @@ export function SelfTile({ candidate, listening, level, micOn, wrapProgress }) {
             </div>
             <div className="flex items-center justify-between gap-2 px-2 py-1.5 text-xs">
                 <span className="truncate">You</span>
-                {micOn ? (
-                    <span className="flex h-3 items-end gap-0.5" aria-hidden="true">
-                        {bars.map((weight, index) => (
-                            <span
-                                key={index}
-                                className="w-1 rounded-full bg-[#9EFF00] transition-[height] duration-75"
-                                style={{ height: `${Math.max(20, Math.min(100, (listening ? level : 0) * 140 * weight))}%` }}
-                            />
-                        ))}
-                        <Mic className="ml-1 size-3 text-muted-foreground" />
-                    </span>
-                ) : (
-                    <MicOff className="size-3 text-muted-foreground" />
-                )}
+                {micOn ? <Mic className={cn("size-3", listening ? "text-[#9EFF00]" : "text-muted-foreground")} /> : <MicOff className="size-3 text-muted-foreground" />}
             </div>
         </div>
     );

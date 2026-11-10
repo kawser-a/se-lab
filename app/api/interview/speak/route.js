@@ -1,10 +1,11 @@
 import { auth } from "@clerk/nextjs/server";
 import { z } from "zod";
-import { isSpeechConfigured, SPEECH_MAX_CHARS, SPEECH_VOICES, synthesize } from "@/lib/ai/speech";
+import { isSpeechConfigured, SPEECH_MAX_CHARS, SPEECH_STYLES, SPEECH_VOICES, synthesize } from "@/lib/ai/speech";
 
 const bodySchema = z.object({
     text: z.string().trim().min(1).max(SPEECH_MAX_CHARS),
     voice: z.enum(SPEECH_VOICES),
+    style: z.enum(SPEECH_STYLES).optional(),
 });
 
 // Turns one short piece of the interviewer's lines into audio. The browser
@@ -19,7 +20,8 @@ export async function POST(req) {
     if (!parsed.success) return Response.json({ error: "Invalid speech request." }, { status: 400 });
 
     try {
-        const audio = await synthesize(parsed.data.text, parsed.data.voice);
+        const { text, voice, style } = parsed.data;
+        const audio = await synthesize(text, voice, { style });
         return new Response(audio, {
             headers: { "Content-Type": "audio/wav", "Cache-Control": "private, max-age=86400" },
         });

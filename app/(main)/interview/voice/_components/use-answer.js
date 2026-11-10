@@ -7,17 +7,23 @@ import { createLevelMeter, createRecognizer, createRecorder, RECOGNITION_ERRORS 
 // - before they've said anything, silence never ends the turn (thinking time)
 // - once they've spoken, a pause of PAUSE_MS starts a short wrap-up
 //   countdown of WRAP_MS, and speaking again cancels it
+// - early in an answer people stop to think more, so a short answer so far
+//   gets EARLY_EXTRA_MS on top before the wrap-up starts
 const PAUSE_MS = 2200;
-const WRAP_MS = 2500;
+const WRAP_MS = 2000;
+const EARLY_EXTRA_MS = 2000;
+const EARLY_WORDS = 12;
 const MAX_ANSWER_MS = 3 * 60 * 1000;
 const SPEAKING_LEVEL = 0.12;
+
+const wordsIn = (text) => text.split(/\s+/).filter(Boolean).length;
 
 // Captures one spoken answer.
 //   mode "browser": the browser transcribes live (Chrome, Edge, Safari)
 //   mode "record":  record, then transcribe with Whisper on the server
 // When the answer ends, `onDone({ text, durationMs })` is called.
 export function useAnswer({ mode, stream, context, onModeFailed, onDone }) {
-    const [status, setStatus] = useState("idle"); // idle | listening | wrapping | transcribing
+    const [status, setStatus] = useState("idle"); // idle | listening | wrapping | paused | transcribing
     const [text, setText] = useState("");
     const [interim, setInterim] = useState("");
     const [level, setLevel] = useState(0);
@@ -34,7 +40,7 @@ export function useAnswer({ mode, stream, context, onModeFailed, onDone }) {
         return createLevelMeter(stream, (value) => {
             setLevel(value);
             const current = session.current;
-            if (current && value > SPEAKING_LEVEL) {
+            if (current && !current.paused && value > SPEAKING_LEVEL) {
                 const now = Date.now();
                 current.firstSpeech ??= now;
                 current.lastSpeech = now;
@@ -105,7 +111,7 @@ export function useAnswer({ mode, stream, context, onModeFailed, onDone }) {
         setElapsed(0);
         setWrapLeft(0);
 
-        const current = { kind: mode, startedAt: Date.now(), firstSpeech: null, lastSpeech: null, stopping: false };
+        const current = { kind: mode, startedAt: Date.now(), firstSpeech: null, lastSpeech: null, stopping: false, paused: false, words: 0 };
 
         if (mode === "browser") {
             current.recognizer = createRecognizer({
@@ -113,6 +119,7 @@ export function useAnswer({ mode, stream, context, onModeFailed, onDone }) {
                     const now = Date.now();
                     current.firstSpeech ??= now;
                     current.lastSpeech = now;
+                    current.words = wordsIn(`${final} ${partial}`);
                     setText(final);
                     setInterim(partial);
                 },
@@ -136,6 +143,7 @@ export function useAnswer({ mode, stream, context, onModeFailed, onDone }) {
         }
 
         current.timer = setInterval(() => {
+            if (current.paused) return;
             const now = Date.now();
             setElapsed(now - current.startedAt);
 
@@ -143,14 +151,17 @@ export function useAnswer({ mode, stream, context, onModeFailed, onDone }) {
             if (!current.lastSpeech) return;
 
             const quiet = now - current.lastSpeech;
+            // Recording mode has no words until the end, so it's judged by time spoken.
+            const early = current.kind === "browser" ? current.words < EARLY_WORDS : current.lastSpeech - current.firstSpeech < 5000;
+            const pause = PAUSE_MS + (early ? EARLY_EXTRA_MS : 0);
             if (current.holdUntil && now < current.holdUntil) {
                 setStatus("listening");
                 setWrapLeft(0);
-            } else if (quiet > PAUSE_MS + WRAP_MS) {
+            } else if (quiet > pause + WRAP_MS) {
                 finish("silence");
-            } else if (quiet > PAUSE_MS) {
+            } else if (quiet > pause) {
                 setStatus("wrapping");
-                setWrapLeft(Math.max(0, PAUSE_MS + WRAP_MS - quiet));
+                setWrapLeft(Math.max(0, pause + WRAP_MS - quiet));
             } else {
                 setStatus("listening");
                 setWrapLeft(0);
@@ -172,6 +183,32 @@ export function useAnswer({ mode, stream, context, onModeFailed, onDone }) {
     }, []);
 
     const stop = useCallback(() => finish("manual"), [finish]);
+
+    // Pausing keeps what's been said so far; resuming carries on adding to it.
+    const pause = useCallback(() => {
+        const current = session.current;
+        if (!current || current.paused || current.stopping) return;
+        current.paused = true;
+        current.pausedAt = Date.now();
+        current.recognizer?.pause();
+        current.recorder?.pause();
+        setInterim("");
+        setWrapLeft(0);
+        setStatus("paused");
+    }, []);
+
+    const resume = useCallback(() => {
+        const current = session.current;
+        if (!current?.paused) return;
+        const now = Date.now();
+        // Time spent paused doesn't count towards the limit or the silence.
+        current.startedAt += now - current.pausedAt;
+        if (current.lastSpeech) current.lastSpeech = now;
+        current.paused = false;
+        current.recognizer?.resume();
+        current.recorder?.resume();
+        setStatus("listening");
+    }, []);
 
     const cancel = useCallback(() => {
         const current = session.current;
@@ -203,6 +240,8 @@ export function useAnswer({ mode, stream, context, onModeFailed, onDone }) {
         start,
         stop,
         hold,
+        pause,
+        resume,
         cancel,
     };
 }

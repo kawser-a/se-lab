@@ -15,7 +15,7 @@ import {
     FOLLOW_UP_JSON_SCHEMA,
     nextStep,
     parseFollowUp,
-    shouldConsiderFollowUp,
+    shouldReact,
 } from "@/lib/interview/engine";
 import { answerMetrics } from "@/lib/interview/metrics";
 import { buildPlanPrompt, normalizePlan, PLAN_JSON_SCHEMA } from "@/lib/interview/plan";
@@ -68,7 +68,7 @@ function toView(interview, user) {
             resume: resumeLine(lines),
             closing: closingLine(lines),
         },
-        step: step.type === "question" ? { ...step, lead: leadIn(step, turns) } : step,
+        step: step.type === "question" ? { ...step, ...leadIn(step, turns) } : step,
         turnIndex: turns.length,
         turns: turns.map(({ questionId, kind, prompt, answer, skipped }) => ({ questionId, kind, prompt, answer, skipped })),
         answered: answeredCount(turns),
@@ -184,7 +184,8 @@ export async function prepareVoiceInterview(id) {
         ({ questions } = await generateValidated(buildPlanPrompt(config, user), (raw) => normalizePlan(raw, config), {
             speed: "fast",
             schema: PLAN_JSON_SCHEMA,
-            maxTokens: 1500,
+            // Roughly 150 tokens a question, with room to spare.
+            maxTokens: 400 + config.questionCount * 220,
             timeoutMs: 20000,
         }));
     } catch (error) {
@@ -231,23 +232,24 @@ export async function submitVoiceAnswer(id, input) {
     if (!answer.skipped && !answer.answer) return { error: "Say or type an answer first, or skip the question." };
 
     let reply = { followUp: null, ack: null };
-    if (shouldConsiderFollowUp(step, answer)) {
+    if (shouldReact(step, answer)) {
         const question = interview.plan.questions.find((q) => q.id === step.questionId);
+        const asking = { asked: step.prompt, allowFollowUp: step.kind === "main" };
         try {
-            // A slow follow-up isn't worth the wait. Without one, the interview just moves on.
+            // A slow reply isn't worth the wait. Without one, the interview just moves on.
             reply = parseFollowUp(
                 await withinTime(
-                    generateJSON(buildFollowUpPrompt(interview, question, answer.answer), {
+                    generateJSON(buildFollowUpPrompt(interview, question, answer.answer, asking), {
                         speed: "fast",
                         schema: FOLLOW_UP_JSON_SCHEMA,
-                        maxTokens: 120,
+                        maxTokens: 200,
                         timeoutMs: 6000,
                     }),
-                    8000
+                    7000
                 )
             );
         } catch (error) {
-            console.warn("Skipping the follow-up question:", error.message);
+            console.warn("Moving on without a written reaction:", error.message);
         }
     }
 
