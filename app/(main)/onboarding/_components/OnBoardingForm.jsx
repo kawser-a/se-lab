@@ -204,12 +204,17 @@ const OnBoardingForm = ({ industries }) => {
                                     updateLoading ? (
                                         <>
                                             <Loader2 className="mr-2 h-4 w-4 animate-spin"/>
-                                            saving
+                                            Setting up your dashboard…
                                         </>
                                     ) : (
                                         "Complete Profile"
                                     )}
                             </Button>
+                            {updateLoading && (
+                                <p className="text-center text-xs text-muted-foreground" aria-live="polite">
+                                    Preparing salary ranges and trends for your industry. This takes a few seconds the first time.
+                                </p>
+                            )}
                         </form>
                     </CardContent>
                 </Card>

@@ -150,7 +150,7 @@ model User {
     assessments    Assessment[]
     resumes        Resume[]
     coverLetter    CoverLetter[]
-    VoiceInterview VoiceInterview[]
+    voiceInterviews VoiceInterview[]
 }
 
 model Assessment {
@@ -238,23 +238,31 @@ enum MarketOutlook {
     NEGATIVE
 }
 
-// new addition
-model VoiceInterview {
-    id                  String   @id @default(cuid())
-    userId              String
-    user                User     @relation(fields: [userId], references: [id])
-    role                String
-    level               String
-    techStack           String[]
-    type                String // Technical, Behavioral, Mixed
-    score               Float
-    strengths           String
-    areasForImprovement String
-    feedbackJson        Json
-    transcriptJson      Json     // 🆕 stores full transcript (array of {from, text})
-    aiAudioUrls         String[] //
-    createdAt           DateTime @default(now())
-    updatedAt           DateTime @updatedAt
+enum InterviewStatus {
+    IN_PROGRESS
+    COMPLETED
+    ABANDONED
+}
 
-    @@index([userId])
+// A spoken mock interview. It's saved as it happens, so a refresh or a
+// dropped connection can carry on where it left off.
+model VoiceInterview {
+    id          String          @id @default(cuid())
+    userId      String
+    user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+    role        String
+    type        String // technical, behavioral or mixed
+    level       String // entry, mid or senior
+    focus       String[]
+    status      InterviewStatus @default(IN_PROGRESS)
+    plan        Json // the questions, with the private notes used for scoring
+    turns       Json            @default("[]") // every question asked and answer given, in order
+    score       Float?
+    feedback    Json?
+    metrics     Json?
+    completedAt DateTime?
+    createdAt   DateTime        @default(now())
+    updatedAt   DateTime        @updatedAt
+
+    @@index([userId, createdAt])
 }

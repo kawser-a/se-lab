@@ -147,7 +147,9 @@ const SummaryEditor = ({ section, headline, onChange, onSuggest }) => {
                     loading={suggestion.loading}
                     kind="summary"
                     onAccept={() => {
+                        const before = section.content;
                         setContent(suggestion.text);
+                        toast("Summary replaced", { action: { label: "Undo", onClick: () => setContent(before) } });
                         setSuggestion(null);
                         setMode("write");
                     }}

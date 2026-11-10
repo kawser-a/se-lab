@@ -180,7 +180,7 @@ export async function suggestBullet({ text, templateId }) {
     `;
 
     return aiResult(async () => {
-        const suggestion = await generateText(prompt, { speed: "fast", maxTokens: 120 });
+        const suggestion = await generateText(prompt, { speed: "instant", maxTokens: 120 });
         return suggestion.replace(/^[-•*\s"]+|["\s]+$/g, "").replace(/\.$/, "");
     });
 }

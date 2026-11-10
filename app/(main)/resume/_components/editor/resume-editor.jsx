@@ -102,7 +102,47 @@ const ResumeEditor = ({ resume }) => {
 
     const moveSection = (index, offset) => setData((current) => ({ ...current, sections: move(current.sections, index, offset) }));
 
-    const removeSection = (id) => setData((current) => ({ ...current, sections: current.sections.filter((s) => s.id !== id) }));
+    // Removing is immediate and can be undone for a few seconds, which is
+    // quicker than confirming first and still forgiving.
+    const removeSection = (id) => {
+        const at = data.sections.findIndex((s) => s.id === id);
+        const removed = data.sections[at];
+        if (!removed) return;
+        setData((current) => ({ ...current, sections: current.sections.filter((s) => s.id !== id) }));
+        toast(`Removed "${removed.title}"`, {
+            action: {
+                label: "Undo",
+                onClick: () =>
+                    setData((current) => {
+                        if (current.sections.some((s) => s.id === id)) return current;
+                        const sections = [...current.sections];
+                        sections.splice(Math.min(at, sections.length), 0, removed);
+                        return { ...current, sections };
+                    }),
+            },
+        });
+    };
+
+    const removeItem = (sectionId, itemId) => {
+        const section = data.sections.find((s) => s.id === sectionId);
+        const at = section?.items.findIndex((item) => item.id === itemId) ?? -1;
+        if (at < 0) return;
+        const removed = section.items[at];
+        const withItems = (fn) => setData((current) => ({ ...current, sections: current.sections.map((s) => (s.id === sectionId ? { ...s, items: fn(s.items) } : s)) }));
+        withItems((items) => items.filter((item) => item.id !== itemId));
+        toast(`Deleted from ${section.title}`, {
+            action: {
+                label: "Undo",
+                onClick: () =>
+                    withItems((items) => {
+                        if (items.some((item) => item.id === itemId)) return items;
+                        const next = [...items];
+                        next.splice(Math.min(at, next.length), 0, removed);
+                        return next;
+                    }),
+            },
+        });
+    };
 
     const addSection = (type) => {
         const section = emptySection(type);
@@ -224,6 +264,7 @@ const ResumeEditor = ({ resume }) => {
                                     onChange={updateSection}
                                     onMove={(offset) => moveSection(index, offset)}
                                     onRemove={() => removeSection(section.id)}
+                                    onRemoveItem={(itemId) => removeItem(section.id, itemId)}
                                     templateId={theme.templateId}
                                     headline={data.basics.headline}
                                     onSuggestSummary={draftSummary}

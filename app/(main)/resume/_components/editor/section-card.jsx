@@ -28,9 +28,8 @@ function IconButton({ label, children, ...props }) {
     );
 }
 
-const SectionCard = ({ section, index, count, open, onToggle, onChange, onMove, onRemove, templateId, headline, onSuggestSummary }) => {
+const SectionCard = ({ section, index, count, open, onToggle, onChange, onMove, onRemove, onRemoveItem, templateId, headline, onSuggestSummary }) => {
     const [openItem, setOpenItem] = useState(section.items?.[0]?.id ?? null);
-    const [confirmRemove, setConfirmRemove] = useState(false);
 
     const meta = SECTION_META[section.type];
     const shown = isSectionShown(templateId, section.type);
@@ -41,15 +40,6 @@ const SectionCard = ({ section, index, count, open, onToggle, onChange, onMove, 
         const item = emptyItem(section.type);
         setItems([...section.items, item]);
         setOpenItem(item.id);
-    };
-
-    const remove = () => {
-        if (!confirmRemove) {
-            setConfirmRemove(true);
-            setTimeout(() => setConfirmRemove(false), 4000);
-            return;
-        }
-        onRemove();
     };
 
     return (
@@ -176,7 +166,7 @@ const SectionCard = ({ section, index, count, open, onToggle, onChange, onMove, 
                                                         variant="ghost"
                                                         size="sm"
                                                         className="text-destructive hover:text-destructive"
-                                                        onClick={() => setItems(section.items.filter((entry) => entry.id !== item.id))}
+                                                        onClick={() => onRemoveItem(item.id)}
                                                     >
                                                         <Trash2 /> Delete
                                                     </Button>
@@ -193,8 +183,8 @@ const SectionCard = ({ section, index, count, open, onToggle, onChange, onMove, 
                     )}
 
                     <div className="flex justify-end border-t pt-3">
-                        <Button type="button" variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={remove}>
-                            <Trash2 /> {confirmRemove ? "Click again to remove" : "Remove section"}
+                        <Button type="button" variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={onRemove}>
+                            <Trash2 /> Remove section
                         </Button>
                     </div>
                 </div>

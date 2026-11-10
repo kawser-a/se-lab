@@ -1,30 +1,22 @@
-import { Button } from '@/components/ui/button'
-import { ArrowLeft } from 'lucide-react'
-import Link from 'next/link'
-import React from 'react'
-import Quiz from '../_components/Quiz'
+import Link from "next/link";
+import { ChevronLeft } from "lucide-react";
+import Quiz from "../_components/Quiz";
 
-const MockInterviewPage = () => {
-    return (
-        <div className='container mx-auto space-y-4 py-6'>
-            <div className='flex flex-col space-y-2 mx-2'>
-                <Link href={"/interview"}>
-                    <Button variant="link" className="gap-2 pl-0 cursor-pointer">
-                        <ArrowLeft className='h-4 w-4' />
-                        Back to Interview Preparation
-                    </Button>
-                </Link>
+export const metadata = {
+    title: "Knowledge Quiz | GrowthGrid",
+};
 
-                <div>
-                    <h1 className="text-4xl md:text-6xl font-bold gradient-title">Mock Interview</h1>
-                    <p className="text-muted-foreground">
-                        Test your knowledge with industry-specific questions
-                    </p>
-                </div>
-            </div>
-            <Quiz/>
+const MockInterviewPage = () => (
+    <div className="mx-auto max-w-3xl space-y-6 pt-6 pb-16">
+        <Link href="/interview" className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-white">
+            <ChevronLeft className="size-4" /> Interview Preparation
+        </Link>
+        <div className="space-y-2">
+            <h1 className="text-4xl font-bold gradient-title text-[#F4F4F5] md:text-5xl">Knowledge quiz</h1>
+            <p className="text-muted-foreground">Test what you know with questions for your industry, and learn from each answer as you go.</p>
         </div>
-    )
-}
+        <Quiz />
+    </div>
+);
 
-export default MockInterviewPage
+export default MockInterviewPage;
