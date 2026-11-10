@@ -11,12 +11,14 @@ import {
     Ellipsis,
     Keyboard,
     Loader2,
+    LogOut,
     MessageSquareText,
     Mic,
     Pause,
     PhoneOff,
     Play,
     Repeat2,
+    RotateCcw,
     SkipForward,
     Square,
     Volume2,
@@ -43,7 +45,7 @@ import { BACKCHANNELS, HOLD_LINE, NOT_CAUGHT } from "@/lib/interview/script";
 import { canRecord, createSpeaker, getRecognitionClass } from "@/lib/interview/speech";
 import { cn } from "@/lib/utils";
 import { InterviewerTile, SelfTile } from "./call-tiles";
-import MicCheck from "./mic-check";
+import JoinControls from "./join-controls";
 import { useAnswer } from "./use-answer";
 
 const CAPTIONS_KEY = "growthgrid:interview-captions";
@@ -120,23 +122,44 @@ function Subtitle({ line }) {
     );
 }
 
+function TypingDots() {
+    return (
+        <span className="inline-flex gap-1 align-middle" aria-label="Speaking">
+            {[0, 1, 2].map((dot) => (
+                <span key={dot} className="size-1.5 rounded-full bg-white/60 motion-safe:animate-bounce" style={{ animationDelay: `${dot * 150}ms` }} />
+            ))}
+        </span>
+    );
+}
+
 function TranscriptPanel({ log, live, className }) {
     const list = useRef(null);
-    // Scroll the list itself, not the page, to keep the newest line in view.
+    const following = useRef(true);
+
+    // Keep the newest words in view, unless they've scrolled up to reread
+    // something, in which case leave the scroll where they put it.
     useEffect(() => {
         const element = list.current;
-        if (element) element.scrollTo({ top: element.scrollHeight, behavior: "smooth" });
-    }, [log.length, live?.text]);
+        if (element && following.current) element.scrollTop = element.scrollHeight;
+    }, [log, live?.text, live?.interim]);
+
+    const onScroll = () => {
+        const element = list.current;
+        following.current = element.scrollHeight - element.scrollTop - element.clientHeight < 48;
+    };
 
     return (
         <div className={cn("flex min-h-0 flex-col rounded-3xl border border-white/10 bg-card", className)}>
             <p className="border-b border-white/10 px-5 py-3 text-sm font-semibold">Transcript</p>
-            <div ref={list} className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4 text-sm leading-relaxed" aria-live="polite">
+            <div ref={list} onScroll={onScroll} className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4 text-sm leading-relaxed">
                 {log.length === 0 && !live && <p className="text-muted-foreground">The conversation will appear here as you talk.</p>}
                 {log.map((entry) => (
                     <div key={entry.id} className={cn("space-y-1", entry.who === "you" && "pl-6")}>
                         <p className={cn("text-xs font-semibold", entry.who === "you" ? "text-sky-300" : "text-[#C9F300]")}>{entry.who === "you" ? "You" : entry.name}</p>
-                        <p className={cn("rounded-2xl px-3 py-2", entry.who === "you" ? "bg-white/[0.06]" : "bg-[#9EFF00]/[0.06]", entry.muted && "italic text-muted-foreground")}>{entry.text}</p>
+                        <p className={cn("rounded-2xl px-3 py-2", entry.who === "you" ? "bg-white/[0.06]" : "bg-[#9EFF00]/[0.06]", entry.muted && "italic text-muted-foreground")}>
+                            {entry.text || (entry.live ? <TypingDots /> : null)}
+                            {entry.live && entry.text && <span className="ml-0.5 inline-block h-3.5 w-px translate-y-0.5 bg-[#C9F300] motion-safe:animate-pulse" aria-hidden="true" />}
+                        </p>
                     </div>
                 ))}
                 {live && (
@@ -155,22 +178,34 @@ function TranscriptPanel({ log, live, className }) {
     );
 }
 
-function ControlButton({ label, active, className, children, ...props }) {
+// A round call control with a short caption under it, so nobody has to
+// guess what an icon means. Props (including a ref from a menu or dialog
+// trigger) go to the button itself.
+function ControlButton({ label, caption, active, danger, className, children, ref, ...props }) {
     return (
-        <Button
-            variant="outline"
-            size="icon"
-            aria-label={label}
-            title={label}
-            className={cn(
-                "size-12 rounded-full border-white/15 bg-white/[0.04] transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/10 active:translate-y-0 active:scale-95",
-                active && "border-[#9EFF00]/60 text-[#C9F300]",
-                className
-            )}
-            {...props}
-        >
-            {children}
-        </Button>
+        <div className="flex flex-col items-center gap-1.5">
+            <button
+                ref={ref}
+                type="button"
+                aria-label={label}
+                title={label}
+                className={cn(
+                    "inline-flex size-12 items-center justify-center rounded-full border transition-all duration-200 [&_svg]:size-5",
+                    "hover:-translate-y-0.5 active:translate-y-0 active:scale-95 disabled:pointer-events-none disabled:opacity-40",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9EFF00] focus-visible:ring-offset-2 focus-visible:ring-offset-[#121212]",
+                    danger
+                        ? "border-red-500 bg-red-600 text-white shadow-[0_0_24px_-8px_#ef4444] hover:bg-red-500"
+                        : active
+                          ? "border-[#9EFF00]/60 bg-[#9EFF00]/10 text-[#C9F300] hover:bg-[#9EFF00]/15"
+                          : "border-white/15 bg-white/[0.04] text-white hover:bg-white/10",
+                    className
+                )}
+                {...props}
+            >
+                {children}
+            </button>
+            {caption && <span className={cn("hidden text-[11px] sm:block", danger ? "text-red-300" : "text-muted-foreground")}>{caption}</span>}
+        </div>
     );
 }
 
@@ -230,7 +265,6 @@ const InterviewSession = ({ initialView, capabilities }) => {
             voice: initialView.interviewer.voice,
             serverVoice: capabilities.serverVoice,
             onLevel: setSpeakLevel,
-            onCaption: setCaption,
         });
         return () => speaker.current?.dispose();
     }, [initialView.interviewer.voice, capabilities.serverVoice]);
@@ -277,7 +311,12 @@ const InterviewSession = ({ initialView, capabilities }) => {
         speaker.current?.prefetch([...BACKCHANNELS.slice(1), HOLD_LINE, NOT_CAUGHT].map(friendly));
     }, []);
 
-    const addLog = useCallback((entry) => setLog((current) => [...current, { id: `${Date.now()}-${current.length}`, ...entry }]), []);
+    const addLog = useCallback((entry) => {
+        const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+        setLog((current) => [...current, { id, ...entry }]);
+        return id;
+    }, []);
+    const updateLog = useCallback((id, patch) => setLog((current) => current.map((entry) => (entry.id === id ? { ...entry, ...patch } : entry))), []);
 
     // Returns the mode it switched to, so the message can say what happens next.
     const onModeFailed = useCallback(() => {
@@ -286,25 +325,47 @@ const InterviewSession = ({ initialView, capabilities }) => {
         return next;
     }, [capabilities.serverTranscription, stream]);
 
+    // Says each part in turn. The greeting, the reaction and the question
+    // each get their own line in the transcript, filled in word by word as
+    // they're spoken, and the subtitle follows the sentence being said.
     const say = useCallback(
         async (parts, { record = true } = {}) => {
-            const list = [].concat(parts).filter(Boolean);
-            const texts = list.map((part) => (typeof part === "string" ? part : part.text)).filter(Boolean);
-            const text = texts.join(" ");
-            if (!text) return;
-            // The greeting, the reaction and the question each get their own line.
-            if (record) texts.forEach((line) => addLog({ who: "interviewer", name: viewRef.current.interviewer.name, text: line }));
+            const list = []
+                .concat(parts)
+                .filter(Boolean)
+                .map((part) => (typeof part === "string" ? { text: part } : part))
+                .filter((part) => part.text);
+            if (!list.length) return;
+
             talkingCount.current += 1;
             setTalking(true);
-            setCaption(text);
             try {
-                if (voiceOnRef.current && speaker.current) await speaker.current.speak(list);
+                for (const [index, part] of list.entries()) {
+                    const id = record ? addLog({ who: "interviewer", name: viewRef.current.interviewer.name, text: "", live: true }) : null;
+
+                    if (!voiceOnRef.current || !speaker.current) {
+                        if (id) updateLog(id, { text: part.text, live: false });
+                        setCaption(part.text);
+                        continue;
+                    }
+
+                    if (list[index + 1]) speaker.current.prefetch(list[index + 1]);
+                    setCaption("");
+                    const finished = await speaker.current.speak(part, {
+                        onProgress: (spoken, line) => {
+                            if (id) updateLog(id, { text: spoken });
+                            setCaption(line);
+                        },
+                    });
+                    if (id) updateLog(id, finished ? { text: part.text, live: false } : { live: false });
+                    if (!finished) break;
+                }
             } finally {
                 talkingCount.current -= 1;
                 if (talkingCount.current === 0) setTalking(false);
             }
         },
-        [addLog]
+        [addLog, updateLog]
     );
 
     const ask = useCallback(
@@ -559,6 +620,21 @@ const InterviewSession = ({ initialView, capabilities }) => {
         setAutoListen(true);
     };
 
+    // Throws away what's been said so far for this answer and listens again.
+    const restartAnswer = () => {
+        cancelListening();
+        setAutoListen(true);
+        toast("Starting your answer again.");
+    };
+
+    // Everything up to the last answer is already saved, so leaving is safe.
+    const saveAndLeave = () => {
+        cancelListening();
+        speaker.current?.cancel();
+        toast("Progress saved. Pick it up any time from Interview Preparation.");
+        router.push("/interview");
+    };
+
     // ---- What's on screen ---------------------------------------------------
 
     const inCall = phase !== "lobby";
@@ -571,8 +647,8 @@ const InterviewSession = ({ initialView, capabilities }) => {
 
     let subtitle = null;
     if (inCall && phase !== "closing") {
-        if (saying || (phase === "speaking" && caption)) {
-            subtitle = { key: `i-${caption}`, who: "interviewer", name: view.interviewer.name, text: caption };
+        if (saying) {
+            subtitle = caption ? { key: "interviewer", who: "interviewer", name: view.interviewer.name, text: caption } : { key: "dots", who: "interviewer", name: view.interviewer.name, dots: true };
         } else if (listening && (yourWords.text || yourWords.interim)) {
             // Keep the end of a long answer on screen, the way TV captions roll on.
             const full = `${yourWords.text} ${yourWords.interim}`.trim();
@@ -583,7 +659,8 @@ const InterviewSession = ({ initialView, capabilities }) => {
         } else if (phase === "waiting" || answer.status === "transcribing") {
             subtitle = { key: "dots", who: "interviewer", name: view.interviewer.name, dots: true };
         } else if (phase === "answering" && caption) {
-            subtitle = { key: `i-${caption}`, who: "interviewer", name: view.interviewer.name, text: caption };
+            // The question stays up while they answer, so it doesn't have to be remembered.
+            subtitle = { key: "question", who: "interviewer", name: view.interviewer.name, text: caption };
         }
     }
 
@@ -608,26 +685,32 @@ const InterviewSession = ({ initialView, capabilities }) => {
     const resuming = view.turnIndex > 0;
     const doneCount = step.type === "question" ? step.number - 1 : view.total;
 
+    const liveWords = listening && (yourWords.text || yourWords.interim) ? yourWords : null;
+    // In the lobby both columns share one height; in the call the stage
+    // leaves room for the controls underneath.
+    const lobbyHeight = "lg:h-[min(640px,calc(100dvh-17rem))] lg:min-h-[500px]";
+    const callHeight = "sm:h-[calc(100dvh-24rem)] sm:max-h-[640px] sm:min-h-[360px]";
+
     return (
-        <div className="mx-auto flex max-w-6xl flex-col gap-4 pt-4 pb-28 sm:pb-6">
+        <div className="mx-auto flex max-w-6xl flex-col gap-4 pt-2 pb-28 sm:pb-6">
             {/* Top bar */}
             <div className="flex min-h-9 items-center gap-3 text-sm">
                 {inCall ? (
-                    <span className="flex items-center gap-2 rounded-full border border-white/10 px-3 py-1 font-medium tabular-nums">
+                    <span className="flex items-center gap-2 rounded-full border border-white/10 px-3 py-1 font-medium tabular-nums" aria-label="Time in interview">
                         <span className={cn("size-2 rounded-full", paused ? "bg-amber-400" : "bg-red-500 motion-safe:animate-pulse")} aria-hidden="true" />
                         {clock(elapsed)}
                     </span>
                 ) : (
                     <Link href="/interview" className="inline-flex items-center gap-1 text-muted-foreground transition-colors hover:text-white">
-                        <ChevronLeft className="size-4" /> Leave
+                        <ChevronLeft className="size-4" /> Interview Preparation
                     </Link>
                 )}
-                <span className="min-w-0 flex-1 truncate font-medium">{view.role} interview</span>
-                {ready && (
+                <span className={cn("min-w-0 flex-1 truncate font-medium", !inCall && "hidden sm:block")}>{inCall && `${view.role} interview`}</span>
+                {ready && inCall && (
                     <span className="flex shrink-0 items-center gap-3 text-muted-foreground">
                         <span className="hidden sm:inline">
                             {step.type === "question" ? `Question ${step.number} of ${step.total}` : `${view.total} questions`}
-                            {step.kind === "follow-up" && inCall && <span className="ml-2 rounded-full bg-[#9EFF00]/10 px-2 py-0.5 text-xs text-[#C9F300]">Follow-up</span>}
+                            {step.kind === "follow-up" && <span className="ml-2 rounded-full bg-[#9EFF00]/10 px-2 py-0.5 text-xs text-[#C9F300]">Follow-up</span>}
                         </span>
                         <span className="flex gap-1" aria-hidden="true">
                             {Array.from({ length: view.total }, (_, index) => (
@@ -635,7 +718,7 @@ const InterviewSession = ({ initialView, capabilities }) => {
                                     key={index}
                                     className={cn(
                                         "h-1.5 w-4 rounded-full transition-colors duration-500 sm:w-6",
-                                        index < doneCount ? "bg-[#9EFF00]" : index === doneCount && inCall ? "bg-[#9EFF00]/50" : "bg-white/15"
+                                        index < doneCount ? "bg-[#9EFF00]" : index === doneCount ? "bg-[#9EFF00]/50" : "bg-white/15"
                                     )}
                                 />
                             ))}
@@ -650,11 +733,12 @@ const InterviewSession = ({ initialView, capabilities }) => {
                     layout
                     transition={{ type: "spring", stiffness: 260, damping: 32 }}
                     className={cn(
-                        "relative h-[52dvh] min-h-[340px] sm:h-[calc(100dvh-23.5rem)] sm:max-h-[640px] sm:min-h-[380px]",
-                        inCall && mode === "typed" && phase === "answering" && "sm:h-[calc(100dvh-33rem)] sm:min-h-[280px]"
+                        "relative",
+                        inCall ? cn("h-[52dvh] min-h-[340px]", callHeight) : cn("h-40 sm:h-[44dvh]", lobbyHeight),
+                        inCall && mode === "typed" && phase === "answering" && "sm:h-[calc(100dvh-34rem)] sm:min-h-[260px]"
                     )}
                 >
-                    <InterviewerTile interviewer={view.interviewer} state={inCall ? tileState : "idle"} level={speakLevel} listenLevel={answer.level}>
+                    <InterviewerTile interviewer={view.interviewer} state={inCall ? tileState : "idle"} level={speakLevel} listenLevel={answer.level} raised={inCall}>
                         {inCall && (
                             <SelfTile
                                 candidate={view.candidate}
@@ -706,7 +790,7 @@ const InterviewSession = ({ initialView, capabilities }) => {
                             animate={{ opacity: 1, x: 0 }}
                             exit={{ opacity: 0, x: 24 }}
                             transition={{ duration: 0.25 }}
-                            className="flex flex-col justify-center gap-6 rounded-3xl border border-white/10 bg-card p-6 sm:p-7"
+                            className={cn("flex flex-col gap-5 rounded-3xl border border-white/10 bg-card p-6 sm:p-7 lg:overflow-y-auto", lobbyHeight)}
                         >
                             <div className="space-y-3">
                                 <div className="flex flex-wrap gap-1.5 text-xs">
@@ -719,39 +803,12 @@ const InterviewSession = ({ initialView, capabilities }) => {
                                 <h1 className="text-2xl font-bold sm:text-3xl">{resuming ? "Ready to pick up again?" : "Ready to join?"}</h1>
                                 <p className="text-sm leading-relaxed text-muted-foreground">
                                     {resuming
-                                        ? `You've answered ${view.answered} of ${view.total} questions with ${view.interviewer.name}.`
-                                        : `${view.interviewer.name} will interview you for the ${view.role} role. Answer out loud, like on a real call. When you stop talking for a few seconds, ${view.interviewer.pronoun ?? "they"}'ll take that as your answer.`}
+                                        ? `${view.role} with ${view.interviewer.name}. You've answered ${view.answered} of ${view.total} questions so far.`
+                                        : `${view.role} with ${view.interviewer.name}. Answer out loud, like on a real call. When you stop talking for a few seconds, ${view.interviewer.pronoun ?? "they"}'ll take that as your answer.`}
                                 </p>
                             </div>
 
-                            <p className="flex items-center gap-2 text-sm" aria-live="polite">
-                                {ready ? (
-                                    <>
-                                        <span className="flex size-5 items-center justify-center rounded-full bg-[#9EFF00] text-[11px] font-bold text-black">✓</span>
-                                        <span>Your questions are ready</span>
-                                    </>
-                                ) : prepareError ? null : (
-                                    <>
-                                        <Loader2 className="size-4 animate-spin text-[#9EFF00]" />
-                                        <span className="text-muted-foreground">Preparing questions for your role…</span>
-                                    </>
-                                )}
-                            </p>
-
-                            {prepareError && (
-                                <div role="alert" className="flex flex-col gap-3 rounded-xl border border-amber-400/30 bg-amber-400/5 p-4 text-sm">
-                                    <p className="text-amber-100">{prepareError}</p>
-                                    <Button size="sm" className="self-start" onClick={prepare}>
-                                        Try again
-                                    </Button>
-                                </div>
-                            )}
-
-                            <MicCheck voiceAvailable={voiceAvailable} onReady={join} onTypeInstead={() => join(null)} resuming={resuming} waiting={!ready} />
-
-                            <p className="border-t border-white/10 pt-4 text-xs leading-relaxed text-muted-foreground">
-                                Headphones help. You can pause any time with the pause button or the Space key.
-                            </p>
+                            <JoinControls voiceAvailable={voiceAvailable} ready={ready} prepareError={prepareError} onRetryPrepare={prepare} resuming={resuming} onJoin={join} />
                         </motion.aside>
                     ) : (
                         showTranscript && (
@@ -761,9 +818,9 @@ const InterviewSession = ({ initialView, capabilities }) => {
                                 animate={{ opacity: 1, x: 0 }}
                                 exit={{ opacity: 0, x: 24 }}
                                 transition={{ duration: 0.25, delay: 0.1 }}
-                                className="hidden lg:block lg:h-[calc(100dvh-23.5rem)] lg:max-h-[640px] lg:min-h-[380px]"
+                                className="hidden lg:block lg:h-[calc(100dvh-24rem)] lg:max-h-[640px] lg:min-h-[360px]"
                             >
-                                <TranscriptPanel log={log} live={listening && (yourWords.text || yourWords.interim) ? yourWords : null} className="h-full" />
+                                <TranscriptPanel log={log} live={liveWords} className="h-full" />
                             </motion.div>
                         )
                     )}
@@ -819,62 +876,79 @@ const InterviewSession = ({ initialView, capabilities }) => {
                                     aria-label="Your answer"
                                     value={typed}
                                     onChange={(event) => setTyped(event.target.value)}
+                                    onKeyDown={(event) => {
+                                        if (event.key === "Enter" && (event.ctrlKey || event.metaKey) && typed.trim()) sendTyped();
+                                    }}
                                     maxLength={MAX_ANSWER_CHARS}
                                     rows={4}
                                     placeholder="Type your answer the way you'd say it."
                                     className="min-h-28 text-base leading-relaxed"
                                 />
-                                <div className="flex justify-end gap-2">
-                                    {voiceAvailable && stream && (
-                                        <Button variant="ghost" onClick={switchToVoice}>
-                                            <Mic /> Answer by voice
+                                <div className="flex items-center justify-between gap-2">
+                                    <span className="hidden text-xs text-muted-foreground sm:block">Ctrl + Enter to send</span>
+                                    <div className="ml-auto flex gap-2">
+                                        {voiceAvailable && stream && (
+                                            <Button variant="ghost" onClick={switchToVoice}>
+                                                <Mic /> Answer by voice
+                                            </Button>
+                                        )}
+                                        <Button onClick={sendTyped} disabled={!typed.trim()}>
+                                            Send answer
                                         </Button>
-                                    )}
-                                    <Button onClick={sendTyped} disabled={!typed.trim()}>
-                                        Send answer
-                                    </Button>
+                                    </div>
                                 </div>
                             </div>
                         )}
 
                         {/* Controls */}
-                        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#121212]/95 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur sm:static sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
-                            <div className="mx-auto flex max-w-xl items-center justify-center gap-3">
-                                <ControlButton label={captions ? "Hide subtitles" : "Show subtitles"} active={captions} aria-pressed={captions} onClick={toggleCaptions}>
+                        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#121212]/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur sm:static sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
+                            <div className="mx-auto flex max-w-xl items-start justify-center gap-3 sm:gap-4">
+                                <ControlButton label={captions ? "Hide subtitles" : "Show subtitles"} caption="Subtitles" active={captions} aria-pressed={captions} onClick={toggleCaptions}>
                                     {captions ? <Captions /> : <CaptionsOff />}
                                 </ControlButton>
-                                <ControlButton
-                                    label={showTranscript ? "Hide transcript" : "Show transcript"}
-                                    active={showTranscript}
-                                    aria-pressed={showTranscript}
-                                    onClick={toggleTranscript}
-                                    className="hidden lg:inline-flex"
-                                >
-                                    <MessageSquareText />
-                                </ControlButton>
+                                <div className="hidden lg:block">
+                                    <ControlButton
+                                        label={showTranscript ? "Hide transcript" : "Show transcript"}
+                                        caption="Transcript"
+                                        active={showTranscript}
+                                        aria-pressed={showTranscript}
+                                        onClick={toggleTranscript}
+                                    >
+                                        <MessageSquareText />
+                                    </ControlButton>
+                                </div>
 
-                                <Button
-                                    onClick={togglePause}
-                                    disabled={phase === "closing"}
-                                    aria-label={paused ? "Resume interview" : "Pause interview"}
-                                    className={cn(
-                                        "h-12 min-w-36 rounded-full px-6 font-semibold transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 active:scale-95",
-                                        paused ? "bg-[#9EFF00] text-black hover:bg-[#b4ff33]" : "bg-white text-black hover:bg-white/90"
-                                    )}
-                                >
-                                    {paused ? <Play /> : <Pause />}
-                                    {paused ? "Resume" : "Pause"}
-                                </Button>
+                                <div className="flex flex-col items-center gap-1.5">
+                                    <Button
+                                        onClick={togglePause}
+                                        disabled={phase === "closing"}
+                                        aria-label={paused ? "Resume interview" : "Pause interview"}
+                                        title={paused ? "Resume (Space)" : "Pause (Space)"}
+                                        className={cn(
+                                            "h-12 min-w-32 rounded-full px-6 font-semibold transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 active:scale-95 sm:min-w-36",
+                                            paused ? "bg-[#9EFF00] text-black hover:bg-[#b4ff33]" : "bg-white text-black hover:bg-white/90"
+                                        )}
+                                    >
+                                        {paused ? <Play /> : <Pause />}
+                                        {paused ? "Resume" : "Pause"}
+                                    </Button>
+                                    <span className="hidden text-[11px] text-muted-foreground sm:block">
+                                        or press <kbd className="rounded border border-white/15 px-1 font-sans">Space</kbd>
+                                    </span>
+                                </div>
 
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
-                                        <ControlButton label="More options" disabled={busy}>
+                                        <ControlButton label="More options" caption="More" disabled={busy}>
                                             <Ellipsis />
                                         </ControlButton>
                                     </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end" side="top" className="w-60">
+                                    <DropdownMenuContent align="end" side="top" className="w-64">
                                         <DropdownMenuItem onSelect={answer.stop} disabled={!listening || paused}>
                                             <Square /> I&apos;m done answering
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onSelect={restartAnswer} disabled={!listening || paused}>
+                                            <RotateCcw /> Start my answer again
                                         </DropdownMenuItem>
                                         <DropdownMenuItem onSelect={repeat} disabled={phase !== "answering" || paused}>
                                             <Repeat2 /> Repeat the question
@@ -898,26 +972,32 @@ const InterviewSession = ({ initialView, capabilities }) => {
                                         <DropdownMenuItem onSelect={toggleVoice}>
                                             {voiceOn ? <VolumeX /> : <Volume2 />} {voiceOn ? `Mute ${view.interviewer.name}` : `Unmute ${view.interviewer.name}`}
                                         </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem onSelect={saveAndLeave}>
+                                            <LogOut /> Save and finish later
+                                        </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
 
                                 <AlertDialog>
                                     <AlertDialogTrigger asChild>
-                                        <ControlButton label="End interview" disabled={phase === "closing"} className="border-transparent bg-red-600 text-white hover:bg-red-500">
+                                        <ControlButton label="End interview" caption="End" danger disabled={phase === "closing"}>
                                             <PhoneOff />
                                         </ControlButton>
                                     </AlertDialogTrigger>
                                     <AlertDialogContent>
                                         <AlertDialogHeader>
-                                            <AlertDialogTitle>End the interview now?</AlertDialogTitle>
+                                            <AlertDialogTitle>End the interview and get feedback?</AlertDialogTitle>
                                             <AlertDialogDescription>
                                                 You&apos;ll get feedback on the {view.answered} {view.answered === 1 ? "answer" : "answers"} you&apos;ve given. Questions you haven&apos;t
-                                                reached won&apos;t count against you.
+                                                reached won&apos;t count against you. If you&apos;d rather come back to it, use <strong>Save and finish later</strong> in the
+                                                More menu instead.
                                             </AlertDialogDescription>
                                         </AlertDialogHeader>
                                         <AlertDialogFooter>
                                             <AlertDialogCancel>Keep going</AlertDialogCancel>
                                             <AlertDialogAction
+                                                className="bg-red-600 text-white hover:bg-red-500"
                                                 onClick={() => {
                                                     cancelListening();
                                                     finish();
@@ -930,7 +1010,6 @@ const InterviewSession = ({ initialView, capabilities }) => {
                                 </AlertDialog>
                             </div>
                         </div>
-
                     </motion.div>
                 )}
             </AnimatePresence>

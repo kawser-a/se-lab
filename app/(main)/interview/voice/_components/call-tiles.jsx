@@ -31,7 +31,7 @@ function VoiceBars({ level, active }) {
 // The interviewer's side of the call. The rings follow the loudness of
 // their voice while they talk, and while the candidate talks the outer ring
 // follows the candidate's voice instead, so the interviewer visibly listens.
-export function InterviewerTile({ interviewer, state, level = 0, listenLevel = 0, className, children }) {
+export function InterviewerTile({ interviewer, state, level = 0, listenLevel = 0, raised = false, className, children }) {
     const speaking = state === "speaking";
     const listening = state === "listening";
 
@@ -42,7 +42,8 @@ export function InterviewerTile({ interviewer, state, level = 0, listenLevel = 0
                 className
             )}
         >
-            <div className="relative -mt-12 flex flex-col items-center gap-5 sm:mt-0" aria-hidden="true">
+            {/* On phones the avatar sits higher during the call to leave room for subtitles. */}
+            <div className={cn("relative flex flex-col items-center gap-5 sm:mt-0", raised ? "-mt-12" : "scale-75 sm:scale-100")} aria-hidden="true">
                 <div className="relative flex items-center justify-center">
                     <span
                         className="absolute size-36 rounded-full bg-[#9EFF00]/[0.07] transition-transform duration-100 sm:size-56"
