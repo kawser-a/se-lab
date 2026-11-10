@@ -15,6 +15,10 @@ const Header = async () => {
 
     return (
         <div className="w-full">
+            {/* The header floats below the top edge. This band keeps scrolled
+                content from showing through the gap above it and fades it
+                out just underneath. */}
+            <div aria-hidden="true" className="pointer-events-none fixed inset-x-0 top-0 z-40 h-28 bg-gradient-to-b from-[#121212] from-70% to-transparent" />
             <header className="fixed top-8 left-1/2 -translate-x-1/2 w-[95%] md:w-[95%] xl:w-[90%] max-w-[1900px] bg-transparent backdrop-blur-md border border-gray-300 rounded-2xl shadow-md z-50">
                 <nav className="h-14 flex items-center justify-between px-4 md:px-4">
                     <Link href="/" className="flex items-center h-full font-bold leading-normal tracking-wide text-2xl">
