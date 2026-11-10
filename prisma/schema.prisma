@@ -190,16 +190,21 @@ model Resume {
 model CoverLetter {
     id             String   @id @default(cuid())
     userId         String
-    user           User     @relation(fields: [userId], references: [id])
-    content        String // Markdown content
+    user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+    resumeId       String? // CV the letter was written from; kept if that CV is deleted
+    content        String // Plain text, paragraphs separated by a blank line
     jobDescription String?
     companyName    String // Name of the company applying to
     jobTitle       String // Position applying for
+    hiringManager  String?
+    tone           String   @default("confident") // confident, warm, formal
+    length         String   @default("standard") // short, standard, detailed
+    requirements   Json[]   @default([]) // What the job asks for, and where the CV shows it
     status         String   @default("draft") // draft, completed
     createdAt      DateTime @default(now())
     updatedAt      DateTime @updatedAt
 
-    @@index([userId])
+    @@index([userId, updatedAt])
 }
 
 // Combined Industry Trends and Salary Insights
