@@ -3,17 +3,12 @@ import { format } from "date-fns";
 import { ArrowRight, CheckCircle2, ChevronLeft, Mic, Target, TrendingUp } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
-import { INTERVIEW_TYPES, LEVELS } from "@/lib/interview/config";
+import { INTERVIEW_TYPES, LEVELS, scoreVerdict } from "@/lib/interview/config";
 import { CRITERIA, normalizeRatings } from "@/lib/interview/scoring";
 import { cn } from "@/lib/utils";
 import RetryFeedback from "./retry-feedback";
 
-function verdict(score) {
-    if (score >= 80) return { label: "Strong", tone: "text-[#9EFF00]" };
-    if (score >= 60) return { label: "Good", tone: "text-[#C9F300]" };
-    if (score >= 40) return { label: "Fair", tone: "text-amber-300" };
-    return { label: "Needs work", tone: "text-red-300" };
-}
+const verdict = scoreVerdict;
 
 function ScoreRing({ score }) {
     const radius = 52;
